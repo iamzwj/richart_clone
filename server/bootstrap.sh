@@ -67,7 +67,6 @@ server {
 EOF
 
 ln -sfn /etc/nginx/sites-available/richart-clone /etc/nginx/sites-enabled/richart-clone
-rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl daemon-reload
 systemctl enable --now nginx
