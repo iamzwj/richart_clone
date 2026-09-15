@@ -44,18 +44,18 @@ npm run dev
 
 填好三个企业微信变量后重新部署，再保存企业微信配置。路由会校验企业微信签名，并支持加密消息。当前版本只自动回复文本消息；图片、语音、群聊上下文和成员权限控制尚未接入。
 
-## 腾讯云自动部署：`zwj.17desin.fun`
+## 腾讯云自动部署：`zwj.17design.fun`
 
 仓库已经包含 [GitHub Actions 工作流](./.github/workflows/deploy.yml)。完成一次服务器初始化后，每次推送到 `main` 都会自动测试、构建、上传新版本并重启服务。
 
 ### 一次性初始化
 
-1. 在 DNSPod 为 `zwj.17desin.fun` 添加 A 记录，指向腾讯云服务器公网 IP。
+1. 在 DNSPod 为 `zwj.17design.fun` 添加 A 记录，指向腾讯云服务器公网 IP。
 2. 为服务器创建**专用部署密钥**，将公钥加入部署用户的 `~/.ssh/authorized_keys`。不要复用 GitHub 登录私钥。
 3. 以 root 登录服务器，上传并执行 `server/bootstrap.sh`：
 
    ```bash
-   DOMAIN=zwj.17desin.fun EMAIL=you@example.com bash bootstrap.sh
+   DOMAIN=zwj.17design.fun EMAIL=you@example.com bash bootstrap.sh
    ```
 
    脚本会安装 Node.js 20、Nginx、systemd 服务和 Let's Encrypt HTTPS 证书；仅支持 Ubuntu/Debian。

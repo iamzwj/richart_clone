@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Run once as root on an Ubuntu Tencent Cloud instance after DNS points to the server.
-# Usage: DOMAIN=zwj.17desin.fun EMAIL=you@example.com bash bootstrap.sh
+# Usage: DOMAIN=zwj.17design.fun EMAIL=you@example.com bash bootstrap.sh
 
-: "${DOMAIN:?Set DOMAIN, e.g. zwj.17desin.fun}"
+: "${DOMAIN:?Set DOMAIN, e.g. zwj.17design.fun}"
 : "${EMAIL:?Set the certificate renewal email}"
 
 if [[ "${EUID}" -ne 0 ]]; then
@@ -73,5 +73,5 @@ systemctl daemon-reload
 systemctl enable --now nginx
 systemctl enable richart-clone
 
-# This only succeeds after zwj.17desin.fun already resolves to this server.
+# This only succeeds after zwj.17design.fun already resolves to this server.
 certbot --nginx --non-interactive --agree-tos --email "$EMAIL" -d "$DOMAIN" --redirect
