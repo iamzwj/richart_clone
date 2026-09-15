@@ -40,14 +40,15 @@ jobs:
       - name: Package source
         if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
         run: |
+          archive_name="richart-clone-${{ github.sha }}.tar.gz"
           tar \
             --exclude-vcs \
             --exclude=node_modules \
             --exclude=.next \
             --exclude=.env \
             --exclude=.env.local \
-            --exclude=richart-clone-${{ github.sha }}.tar.gz \
-            -czf richart-clone-${{ github.sha }}.tar.gz .
+            -czf "/tmp/$archive_name" .
+          mv "/tmp/$archive_name" "$archive_name"
 
       - name: Upload release
         if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
