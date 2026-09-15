@@ -47,59 +47,83 @@ jobs:
             --exclude=.next \
             --exclude=.env \
             --exclude=.env.local \
-            -czf "/tmp/$archive_name" .
+          -czf "/tmp/$archive_name" .
           mv "/tmp/$archive_name" "$archive_name"
 
-      - name: Upload release
+      - name: Configure deployment SSH
         if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
-          port: ${{ secrets.DEPLOY_PORT || '22' }}
-          source: richart-clone-${{ github.sha }}.tar.gz
-          target: /tmp
-
-      - name: Activate release
-        if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
-        uses: appleboy/ssh-action@v1
         env:
-          RELEASE_SHA: ${{ github.sha }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST_FINGERPRINT: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+        run: |
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$HOME/.ssh/richart-clone-deploy"
+          chmod 600 "$HOME/.ssh/richart-clone-deploy"
+          ssh-keyscan -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" > "$HOME/.ssh/known_hosts"
+          actual_fingerprint="$(ssh-keygen -lf "$HOME/.ssh/known_hosts" -E sha256 | awk '{print $2}')"
+          test "$actual_fingerprint" = "$DEPLOY_HOST_FINGERPRINT"
+
+      - name: Prepare runtime configuration
+        if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
+        env:
           GRSAI_API_KEY: ${{ secrets.GRSAI_API_KEY }}
           GRSAI_BASE_URL: ${{ vars.GRSAI_BASE_URL || 'https://grsaiapi.com' }}
           GRSAI_MODEL: ${{ vars.GRSAI_MODEL || 'gpt-6-astra' }}
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
-          port: ${{ secrets.DEPLOY_PORT || '22' }}
-          envs: RELEASE_SHA,GRSAI_API_KEY,GRSAI_BASE_URL,GRSAI_MODEL
-          script: |
-            set -euo pipefail
-            app_dir=/opt/richart-clone
-            release_dir="$app_dir/releases/$RELEASE_SHA"
-            archive="/tmp/richart-clone-$RELEASE_SHA.tar.gz"
+        run: |
+          umask 077
+          {
+            printf 'GRSAI_API_KEY=%s\n' "$GRSAI_API_KEY"
+            printf 'GRSAI_BASE_URL=%s\n' "$GRSAI_BASE_URL"
+            printf 'GRSAI_MODEL=%s\n' "$GRSAI_MODEL"
+          } > .richart-clone-runtime.env
 
-            sudo mkdir -p "$release_dir"
-            sudo tar -xzf "$archive" -C "$release_dir"
-            sudo rm -f "$archive"
-            sudo chown -R richart:richart "$release_dir"
+      - name: Upload release
+        if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        run: |
+          scp -i "$HOME/.ssh/richart-clone-deploy" -P "$DEPLOY_PORT" -o BatchMode=yes \
+            richart-clone-${{ github.sha }}.tar.gz .richart-clone-runtime.env \
+            "$DEPLOY_USER@$DEPLOY_HOST:/tmp/"
 
-            sudo -u richart bash -lc "cd '$release_dir' && npm ci && npm run build"
-            sudo install -o richart -g richart -m 600 /dev/null "$release_dir/.env"
-            sudo tee "$release_dir/.env" >/dev/null <<EOF
-            GRSAI_API_KEY=$GRSAI_API_KEY
-            GRSAI_BASE_URL=$GRSAI_BASE_URL
-            GRSAI_MODEL=$GRSAI_MODEL
-            EOF
-            sudo chown richart:richart "$release_dir/.env"
+      - name: Activate release
+        if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        run: |
+          ssh -i "$HOME/.ssh/richart-clone-deploy" -p "$DEPLOY_PORT" -o BatchMode=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$RELEASE_SHA'" <<'EOF'
+          set -euo pipefail
+          release_sha="$1"
+          app_dir=/opt/richart-clone
+          release_dir="$app_dir/releases/$release_sha"
+          archive="/tmp/richart-clone-$release_sha.tar.gz"
+          runtime_env=/tmp/.richart-clone-runtime.env
 
-            sudo ln -sfn "$release_dir" "$app_dir/current"
-            sudo systemctl restart richart-clone
-            sudo systemctl is-active --quiet richart-clone
+          sudo mkdir -p "$release_dir"
+          sudo tar -xzf "$archive" -C "$release_dir"
+          sudo rm -f "$archive"
+          sudo chown -R richart:richart "$release_dir"
+
+          sudo -u richart bash -lc "cd '$release_dir' && npm ci && npm run build"
+          sudo install -o richart -g richart -m 600 "$runtime_env" "$release_dir/.env"
+          sudo rm -f "$runtime_env"
+
+          sudo ln -sfn "$release_dir" "$app_dir/current"
+          sudo systemctl restart richart-clone
+          sudo systemctl is-active --quiet richart-clone
+          EOF
+
+      - name: Remove runner runtime configuration
+        if: ${{ always() }}
+        run: rm -f .richart-clone-runtime.env
 
       - name: Deployment configuration required
         if: ${{ env.DEPLOY_HOST_CONFIGURED == '' || env.DEPLOY_USER_CONFIGURED == '' || env.DEPLOY_KEY_CONFIGURED == '' || env.DEPLOY_FINGERPRINT_CONFIGURED == '' || env.GRSAI_KEY_CONFIGURED == '' }}
