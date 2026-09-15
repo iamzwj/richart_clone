@@ -46,7 +46,7 @@ jobs:
             --exclude=.next \
             --exclude=.env \
             --exclude=.env.local \
-            -czf /tmp/richart-clone-${{ github.sha }}.tar.gz .
+            -czf richart-clone-${{ github.sha }}.tar.gz .
 
       - name: Upload release
         if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
@@ -57,7 +57,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
           port: ${{ secrets.DEPLOY_PORT || '22' }}
-          source: /tmp/richart-clone-${{ github.sha }}.tar.gz
+          source: richart-clone-${{ github.sha }}.tar.gz
           target: /tmp
 
       - name: Activate release
