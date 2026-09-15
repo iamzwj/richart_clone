@@ -5,7 +5,7 @@
 ## 已包含
 
 - 适合直接分享的移动端网页聊天入口
-- 服务端 OpenAI Responses API 调用；浏览器永远拿不到 API Key
+- 服务端通过 GRSai 的 OpenAI-compatible Chat Completions API 调用 GPT-6；浏览器永远拿不到 API Key
 - `content/profile.md` 作为可编辑的人设/知识起点
 - 企业微信 URL 验证、明文消息和加密消息回调（`/api/wecom`）
 - 基础 IP 限流与输入长度限制，避免公开链接被简单刷爆
@@ -18,7 +18,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-在 `.env.local` 填入 `OPENAI_API_KEY`，然后访问 `http://localhost:3000`。不要将 `.env.local` 提交到 Git。
+在 `.env.local` 填入 `GRSAI_API_KEY`，然后访问 `http://localhost:3000`。默认模型是小蝶正在使用的 `gpt-6-astra`；不要将 `.env.local` 提交到 Git。
 
 ## 让它像你，而不是泛用聊天机器人
 
@@ -28,7 +28,7 @@ npm run dev
 
 1. 将仓库推送到 GitHub。
 2. 在 Vercel 导入该仓库（框架会自动识别为 Next.js）。
-3. 在 Vercel 的 Environment Variables 填写 `OPENAI_API_KEY`，可选填写 `OPENAI_MODEL`。
+3. 在 Vercel 的 Environment Variables 填写 `GRSAI_API_KEY`，可选填写 `GRSAI_BASE_URL` 和 `GRSAI_MODEL`。
 4. 重新部署，得到例如 `https://richart-clone.vercel.app` 的链接，即可分享。
 
 这是最短路径：企业微信需要一个可从公网访问的 HTTPS 回调地址，所以先部署网页也正好提供了该地址。
@@ -71,15 +71,15 @@ npm run dev
 | `DEPLOY_SSH_KEY` | 专用部署私钥全文 |
 | `DEPLOY_HOST_FINGERPRINT` | 服务器 SSH ED25519 指纹，例如 `SHA256:...` |
 | `DEPLOY_PORT` | 可选，默认 `22` |
-| `OPENAI_API_KEY` | OpenAI API 密钥 |
+| `GRSAI_API_KEY` | GRSai API 密钥 |
 
-可选 Repository Variable：`OPENAI_MODEL`。Secrets 不会写入仓库，也不会出现在部署日志中。
+可选 Repository Variables：`GRSAI_BASE_URL`（默认 `https://grsaiapi.com`）和 `GRSAI_MODEL`（默认 `gpt-6-astra`）。Secrets 不会写入仓库，也不会出现在部署日志中。
 
 ## 生产注意事项
 
 - 当前限流存于进程内存，适合 MVP。多实例部署前请改为 Vercel KV、Upstash Redis 或数据库限流。
 - 公开链接会产生模型费用。若仅面向特定人群，应在入口增加登录、邀请码或 Cloudflare WAF。
-- 对话请求使用 `store: false`，应用本身不会保存聊天记录；仍应根据你的组织合规要求审查模型供应商的数据政策。
+- 应用本身不会持久化聊天记录；对话仍会发送给 GRSai，因此上线前应根据其数据保留与合规政策进行确认。
 
 ## Verify
 

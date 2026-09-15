@@ -23,10 +23,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ reply });
   } catch (error) {
     console.error("Chat request failed:", error instanceof Error ? error.message : "Unknown error");
-    const message = error instanceof Error && error.message.includes("OPENAI_API_KEY")
+    const message = error instanceof Error && error.message.includes("GRSAI_API_KEY")
       ? "服务尚未配置模型密钥。"
       : "暂时无法回复，请稍后重试。";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
