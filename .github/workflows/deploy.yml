@@ -46,6 +46,7 @@ jobs:
             --exclude=.next \
             --exclude=.env \
             --exclude=.env.local \
+            --exclude=richart-clone-${{ github.sha }}.tar.gz \
             -czf richart-clone-${{ github.sha }}.tar.gz .
 
       - name: Upload release
