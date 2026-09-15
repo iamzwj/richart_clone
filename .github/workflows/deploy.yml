@@ -16,6 +16,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    env:
+      DEPLOY_HOST_CONFIGURED: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER_CONFIGURED: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_KEY_CONFIGURED: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_FINGERPRINT_CONFIGURED: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+      OPENAI_KEY_CONFIGURED: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,6 +38,7 @@ jobs:
           npm run build
 
       - name: Package source
+        if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.OPENAI_KEY_CONFIGURED != '' }}
         run: |
           tar \
             --exclude-vcs \
@@ -42,6 +49,7 @@ jobs:
             -czf /tmp/richart-clone-${{ github.sha }}.tar.gz .
 
       - name: Upload release
+        if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.OPENAI_KEY_CONFIGURED != '' }}
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -53,6 +61,7 @@ jobs:
           target: /tmp
 
       - name: Activate release
+        if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.OPENAI_KEY_CONFIGURED != '' }}
         uses: appleboy/ssh-action@v1
         env:
           RELEASE_SHA: ${{ github.sha }}
@@ -87,3 +96,7 @@ jobs:
             sudo ln -sfn "$release_dir" "$app_dir/current"
             sudo systemctl restart richart-clone
             sudo systemctl is-active --quiet richart-clone
+
+      - name: Deployment configuration required
+        if: ${{ env.DEPLOY_HOST_CONFIGURED == '' || env.DEPLOY_USER_CONFIGURED == '' || env.DEPLOY_KEY_CONFIGURED == '' || env.DEPLOY_FINGERPRINT_CONFIGURED == '' || env.OPENAI_KEY_CONFIGURED == '' }}
+        run: 'echo "Deployment skipped: add the required GitHub Actions Secrets described in README.md."'
