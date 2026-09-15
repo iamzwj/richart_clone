@@ -44,6 +44,37 @@ npm run dev
 
 填好三个企业微信变量后重新部署，再保存企业微信配置。路由会校验企业微信签名，并支持加密消息。当前版本只自动回复文本消息；图片、语音、群聊上下文和成员权限控制尚未接入。
 
+## 腾讯云自动部署：`zwj.17desin.fun`
+
+仓库已经包含 [GitHub Actions 工作流](./.github/workflows/deploy.yml)。完成一次服务器初始化后，每次推送到 `main` 都会自动测试、构建、上传新版本并重启服务。
+
+### 一次性初始化
+
+1. 在 DNSPod 为 `zwj.17desin.fun` 添加 A 记录，指向腾讯云服务器公网 IP。
+2. 为服务器创建**专用部署密钥**，将公钥加入部署用户的 `~/.ssh/authorized_keys`。不要复用 GitHub 登录私钥。
+3. 以 root 登录服务器，上传并执行 `server/bootstrap.sh`：
+
+   ```bash
+   DOMAIN=zwj.17desin.fun EMAIL=you@example.com bash bootstrap.sh
+   ```
+
+   脚本会安装 Node.js 20、Nginx、systemd 服务和 Let's Encrypt HTTPS 证书；仅支持 Ubuntu/Debian。
+
+### GitHub Actions Secrets
+
+在 GitHub 仓库的 **Settings → Secrets and variables → Actions** 添加：
+
+| Name | Value |
+| --- | --- |
+| `DEPLOY_HOST` | 腾讯云服务器公网 IP |
+| `DEPLOY_USER` | 可执行无密码 `sudo` 的部署用户 |
+| `DEPLOY_SSH_KEY` | 专用部署私钥全文 |
+| `DEPLOY_HOST_FINGERPRINT` | 服务器 SSH ED25519 指纹，例如 `SHA256:...` |
+| `DEPLOY_PORT` | 可选，默认 `22` |
+| `OPENAI_API_KEY` | OpenAI API 密钥 |
+
+可选 Repository Variable：`OPENAI_MODEL`。Secrets 不会写入仓库，也不会出现在部署日志中。
+
 ## 生产注意事项
 
 - 当前限流存于进程内存，适合 MVP。多实例部署前请改为 Vercel KV、Upstash Redis 或数据库限流。
