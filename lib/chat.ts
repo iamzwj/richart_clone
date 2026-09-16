@@ -55,7 +55,7 @@ export async function answer(messages: ChatMessage[]): Promise<string> {
   const completionMessages = createCompletionMessages(messages);
 
   const response = await getClient().chat.completions.create({
-    model: process.env.GRSAI_MODEL || "gpt-6-astra",
+    model: process.env.GRSAI_MODEL || "gpt-5.6-terra",
     messages: completionMessages,
   });
 
@@ -67,7 +67,7 @@ export async function answer(messages: ChatMessage[]): Promise<string> {
 
 export async function answerStream(messages: ChatMessage[]) {
   return getClient().chat.completions.create({
-    model: process.env.GRSAI_MODEL || "gpt-6-astra",
+    model: process.env.GRSAI_MODEL || "gpt-5.6-terra",
     messages: createCompletionMessages(messages),
     stream: true,
   });
