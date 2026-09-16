@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { answer, type ChatMessage } from "@/lib/chat";
+import { answerStream, type ChatMessage } from "@/lib/chat";
 import { isRateLimited } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -19,8 +19,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "消息格式不正确。" }, { status: 400 });
     }
 
-    const reply = await answer(body.messages as ChatMessage[]);
-    return NextResponse.json({ reply });
+    const completion = await answerStream(body.messages as ChatMessage[]);
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of completion) {
+            const delta = chunk.choices[0]?.delta.content;
+            if (delta) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
+            }
+          }
+          controller.enqueue(encoder.encode("data: {\"done\":true}\n\n"));
+        } catch (error) {
+          console.error("Chat stream failed:", error instanceof Error ? error.message : "Unknown error");
+          controller.enqueue(encoder.encode("data: {\"error\":\"暂时无法回复，请稍后重试。\"}\n\n"));
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "cache-control": "no-cache, no-transform",
+        connection: "keep-alive",
+        "content-type": "text/event-stream; charset=utf-8",
+        "x-accel-buffering": "no",
+      },
+    });
   } catch (error) {
     console.error("Chat request failed:", error instanceof Error ? error.message : "Unknown error");
     const message = error instanceof Error && error.message.includes("GRSAI_API_KEY")

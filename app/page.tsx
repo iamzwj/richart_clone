@@ -77,8 +77,37 @@ export default function Home() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ messages: nextMessages }),
       });
-      const data = (await response.json()) as { reply?: string; error?: string };
-      setMessages((current) => [...current, { role: "assistant", content: data.reply || data.error || "抱歉，暂时无法回复。" }]);
+      if (!response.ok || !response.body) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || "暂时无法连接到聊天服务。");
+      }
+
+      setMessages((current) => [...current, { role: "assistant", content: "" }]);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+        for (const event of events) {
+          if (!event.startsWith("data: ")) continue;
+          const data = JSON.parse(event.slice(6)) as { delta?: string; error?: string };
+          if (data.error) throw new Error(data.error);
+          if (data.delta) {
+            setMessages((current) => current.map((message, index) => (
+              index === current.length - 1 && message.role === "assistant"
+                ? { ...message, content: `${message.content}${data.delta}` }
+                : message
+            )));
+          }
+        }
+
+        if (done) break;
+      }
     } catch {
       setMessages((current) => [...current, { role: "assistant", content: "网络连接出了点问题，请稍后再试。" }]);
     } finally {
