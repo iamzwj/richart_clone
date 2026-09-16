@@ -18,7 +18,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-在 `.env.local` 填入 `GRSAI_API_KEY`，然后访问 `http://localhost:3000`。默认模型是响应速度和能力更均衡的 `gpt-5.6-terra`；不要将 `.env.local` 提交到 Git。
+在 `.env.local` 填入 `GRSAI_API_KEY`，然后访问 `http://localhost:3000`。默认模型是响应更快的 `gemini-3.1-flash-lite`；不要将 `.env.local` 提交到 Git。
 
 ## 让它像你，而不是泛用聊天机器人
 
@@ -73,7 +73,7 @@ npm run dev
 | `DEPLOY_PORT` | 可选，默认 `22` |
 | `GRSAI_API_KEY` | GRSai API 密钥 |
 
-可选 Repository Variables：`GRSAI_BASE_URL`（默认 `https://grsaiapi.com`）和 `GRSAI_MODEL`（默认 `gpt-5.6-terra`）。Secrets 不会写入仓库，也不会出现在部署日志中。
+可选 Repository Variables：`GRSAI_BASE_URL`（默认 `https://grsaiapi.com`）和 `GRSAI_MODEL`（默认 `gemini-3.1-flash-lite`）。Secrets 不会写入仓库，也不会出现在部署日志中。
 
 ## 生产注意事项
 
