@@ -19,7 +19,47 @@ export default function Home() {
   const name = process.env.NEXT_PUBLIC_CLONE_NAME || "Richart J";
   const tagline = process.env.NEXT_PUBLIC_CLONE_TAGLINE || "视觉设计师 · AI 自动化 · 数字产品";
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, pending]);
+  useEffect(() => {
+    const report = (message: string) => {
+      void fetch("/api/client-error", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message: message.slice(0, 500) }),
+      }).catch(() => undefined);
+    };
+
+    const onError = (event: ErrorEvent) => {
+      const error = event.error;
+      report(error instanceof Error ? `${error.name}: ${error.message}` : event.message);
+    };
+    const onRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      report(reason instanceof Error ? `${reason.name}: ${reason.message}` : String(reason));
+    };
+
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
+
+  useEffect(() => {
+    const element = endRef.current;
+    if (!element || typeof element.scrollIntoView !== "function") return;
+
+    try {
+      element.scrollIntoView({ behavior: "smooth", block: "end" });
+    } catch {
+      // Some embedded browsers reject the options object.
+      try {
+        element.scrollIntoView();
+      } catch {
+        // Scrolling is cosmetic; it must never break chat rendering.
+      }
+    }
+  }, [messages, pending]);
 
   async function send(event?: FormEvent, preset?: string) {
     event?.preventDefault();
@@ -71,4 +111,3 @@ export default function Home() {
     </main>
   );
 }
-
