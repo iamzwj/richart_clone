@@ -15,7 +15,6 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
     env:
       DEPLOY_HOST_CONFIGURED: ${{ secrets.DEPLOY_HOST }}
       DEPLOY_USER_CONFIGURED: ${{ secrets.DEPLOY_USER }}
@@ -64,6 +63,16 @@ jobs:
           ssh-keyscan -p "$DEPLOY_PORT" -t ed25519 "$DEPLOY_HOST" > "$HOME/.ssh/known_hosts"
           actual_fingerprint="$(ssh-keygen -lf "$HOME/.ssh/known_hosts" -E sha256 | awk '{print $2}')"
           test "$actual_fingerprint" = "$DEPLOY_HOST_FINGERPRINT"
+
+      - name: Verify deployment login
+        if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        run: |
+          ssh -i "$HOME/.ssh/richart-clone-deploy" -p "$DEPLOY_PORT" -o BatchMode=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" 'true'
 
       - name: Prepare runtime configuration
         if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
