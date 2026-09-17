@@ -34,12 +34,12 @@ const welcome: Message = {
   content: "你好，我是张文杰设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。\n\n你可以跟我说你要做什么，例如：设计一个海报，主标题是xxx，副标题是xxx，下面的文案是xxx，尺寸是：9:16，3d卡通风格。",
 };
 const fieldLabels: Record<keyof Brief, string> = {
-  title: "主标题",
-  subtitle: "副标题（可选）",
-  copy: "文案（可选）",
-  supplement: "补充说明（可选）",
-  size: "尺寸",
-  style: "风格",
+  title: "主标题 *",
+  subtitle: "副标题",
+  copy: "文案",
+  supplement: "补充说明",
+  size: "比例 *",
+  style: "风格 *",
 };
 const requiredBriefFields: (keyof Brief)[] = ["title", "size", "style"];
 
@@ -708,15 +708,14 @@ export default function Home() {
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
                     <div className={`brief-field ${!message.brief?.[field] && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
                       <span>{fieldLabels[field]}</span>
-                      {editingField === field && index === latestBriefIndex ? field === "size" ? <select
-                        autoFocus
-                        value={editingValue || DEFAULT_DESIGN_SIZE}
-                        onChange={(event) => setEditingValue(event.target.value)}
-                        onKeyDown={(event) => { if (event.key === "Escape") { setEditingField(null); setEditingValue(""); } }}
-                        aria-label={`编辑${fieldLabels[field]}`}
+                      {field === "size" && index === latestBriefIndex && !readOnly ? <select
+                        value={message.brief?.size || DEFAULT_DESIGN_SIZE}
+                        onChange={(event) => { void persistBriefField(index, message, field, event.target.value); }}
+                        disabled={pending}
+                        aria-label={`选择${fieldLabels[field]}`}
                       >
                         {DESIGN_SIZE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.value}</option>)}
-                      </select> : <input
+                      </select> : editingField === field && index === latestBriefIndex ? <input
                         autoFocus
                         value={editingValue}
                         onChange={(event) => setEditingValue(event.target.value)}
@@ -726,25 +725,19 @@ export default function Home() {
                         }}
                         aria-label={`编辑${fieldLabels[field]}`}
                       /> : !message.brief?.[field] && index === latestBriefIndex ? <div className="brief-entry">
-                        {field === "size" ? <select
-                          value={briefDrafts.size ?? DEFAULT_DESIGN_SIZE}
-                          onChange={(event) => { void persistBriefField(index, message, field, event.target.value); }}
-                          aria-label={`填写${fieldLabels[field]}`}
-                        >
-                          {DESIGN_SIZE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.value}</option>)}
-                        </select> : <input
+                        <input
                           value={briefDrafts[field] ?? ""}
                           placeholder={fieldPlaceholders[field]}
                           onChange={(event) => setBriefDrafts((current) => ({ ...current, [field]: event.target.value }))}
                           onBlur={() => { const value = briefDrafts[field] || ""; if (value.trim()) void persistBriefField(index, message, field, value); }}
                           onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void persistBriefField(index, message, field, briefDrafts[field] || ""); } }}
                           aria-label={`填写${fieldLabels[field]}`}
-                        />}
+                        />
                         {field === "style" && <div className="style-presets" aria-label="风格预设">
                           {stylePresets.map((preset) => <button type="button" key={preset} onMouseDown={(event) => event.preventDefault()} onClick={() => { void persistBriefField(index, message, field, preset); }}>{preset}</button>)}
                         </div>}
                       </div> : <b>{message.brief?.[field] || "待确认"}</b>}
-                      {index === latestBriefIndex && !readOnly && !pending && message.brief?.[field] && (editingField === field ? <button className="brief-edit confirm" type="button" onClick={() => { void commitBriefEdit(index, message); }} aria-label={`保存${fieldLabels[field]}`}>✓</button> : <button className="brief-edit" type="button" onClick={() => { setEditingField(field); setEditingValue(message.brief?.[field] || ""); }} aria-label={`编辑${fieldLabels[field]}`} title={`编辑${fieldLabels[field]}`}>
+                      {field !== "size" && index === latestBriefIndex && !readOnly && !pending && message.brief?.[field] && (editingField === field ? <button className="brief-edit confirm" type="button" onClick={() => { void commitBriefEdit(index, message); }} aria-label={`保存${fieldLabels[field]}`}>✓</button> : <button className="brief-edit" type="button" onClick={() => { setEditingField(field); setEditingValue(message.brief?.[field] || ""); }} aria-label={`编辑${fieldLabels[field]}`} title={`编辑${fieldLabels[field]}`}>
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.8V20h3.2L18.5 8.7l-3.2-3.2L4 16.8Zm13.8-12.3 1.7-1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1l-1.7 1.7-3-3Z" /></svg>
                       </button>)}
                     </div>

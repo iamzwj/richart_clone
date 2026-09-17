@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const modification = typeof body.modification === "string" ? body.modification.trim().slice(0, 2_000) : undefined;
     const isReferenceEdit = references.length > 0 && Boolean(modification);
     if (!isReferenceEdit && missingFields(brief).length) {
-      return NextResponse.json({ error: "请先补全主标题、尺寸和风格。副标题和文案可留空。" }, { status: 400 });
+      return NextResponse.json({ error: "请先补全主标题、比例和风格。" }, { status: 400 });
     }
     const constraints = Array.isArray(body.constraints)
       ? body.constraints.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, 200)).filter(Boolean).slice(0, 12)
