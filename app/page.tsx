@@ -231,8 +231,10 @@ export default function Home() {
   const [briefDrafts, setBriefDrafts] = useState<Partial<Brief>>({});
   const [draggingReference, setDraggingReference] = useState(false);
   const [activity, setActivity] = useState<"reply" | "design" | null>(null);
+  const [focusComposerRequest, setFocusComposerRequest] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const name = process.env.NEXT_PUBLIC_CLONE_NAME || "张文杰";
   const assistantName = `${name}的设计助理`;
@@ -246,6 +248,12 @@ export default function Home() {
       element.scrollIntoView();
     }
   }, [messages, pending, error]);
+
+  useEffect(() => {
+    if (!focusComposerRequest || readOnly || pending || loadingConversation) return;
+    const frame = window.requestAnimationFrame(() => composerInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusComposerRequest, loadingConversation, pending, readOnly]);
 
   async function refreshConversationList() {
     const response = await fetch("/api/conversations", { cache: "no-store" });
@@ -273,6 +281,7 @@ export default function Home() {
       setGeneratedImages([]);
       setMode("review");
       setError("");
+      if (token) setFocusComposerRequest((current) => current + 1);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "无法读取对话记录。");
     } finally {
@@ -295,6 +304,16 @@ export default function Home() {
     const timer = window.setInterval(() => { void openConversation(conversationId, null); }, 3_000);
     return () => window.clearInterval(timer);
   }, [conversationId, readOnly]);
+
+  useEffect(() => {
+    const clearDraggingReference = () => setDraggingReference(false);
+    window.addEventListener("dragend", clearDraggingReference);
+    window.addEventListener("drop", clearDraggingReference);
+    return () => {
+      window.removeEventListener("dragend", clearDraggingReference);
+      window.removeEventListener("drop", clearDraggingReference);
+    };
+  }, []);
 
   async function ensureConversation(): Promise<ActiveConversation> {
     if (conversationId && writeToken) return { id: conversationId, token: writeToken };
@@ -650,6 +669,7 @@ export default function Home() {
     setEditingValue("");
     setBriefDrafts({});
     setActivity(null);
+    setFocusComposerRequest((current) => current + 1);
   }
 
   const latestBriefIndex = messages.reduce((latest, message, index) => message.brief ? index : latest, -1);
@@ -657,9 +677,19 @@ export default function Home() {
   return (
     <main
       className="workspace"
-      onDragOver={(event) => { event.preventDefault(); if (!readOnly) setDraggingReference(true); }}
-      onDragLeave={(event) => { if (event.currentTarget === event.target) setDraggingReference(false); }}
-      onDrop={(event) => { event.preventDefault(); setDraggingReference(false); if (!readOnly) void selectReference(event.dataTransfer.files?.[0]); }}
+      onDragOver={(event) => {
+        if (readOnly || !Array.from(event.dataTransfer.types).includes("Files")) return;
+        event.preventDefault();
+        setDraggingReference(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) setDraggingReference(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDraggingReference(false);
+        if (!readOnly) void selectReference(event.dataTransfer.files?.[0]);
+      }}
     >
       <aside className="conversation-sidebar" aria-label="公开对话列表">
         <div className="sidebar-header">
@@ -806,6 +836,7 @@ export default function Home() {
             <input ref={fileInputRef} className="file-input" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { void selectReference(event.target.files?.[0]); event.currentTarget.value = ""; }} />
             <button className="upload" type="button" disabled={pending || readOnly} onClick={() => fileInputRef.current?.click()} aria-label="上传参考图" title="上传参考图">＋</button>
             <textarea
+              ref={composerInputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
