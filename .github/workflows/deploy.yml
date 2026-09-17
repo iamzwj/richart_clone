@@ -96,7 +96,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-          REPOSITORY_URL: https://github.com/${{ github.repository }}.git
+          REPOSITORY_URL: git@github.com:${{ github.repository }}.git
         run: |
           ssh -i "$HOME/.ssh/richart-clone-deploy" -p "$DEPLOY_PORT" -o BatchMode=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$RELEASE_SHA' '$REPOSITORY_URL'" <<'EOF'
@@ -105,6 +105,7 @@ jobs:
           repository_url="$2"
           app_dir=/opt/richart-clone
           source_dir="$app_dir/source"
+          source_key=/home/richart/.ssh/richart_clone_source
           release_dir="$app_dir/releases/$release_sha"
           runtime_env=/tmp/.richart-clone-runtime.env
 
@@ -112,13 +113,22 @@ jobs:
           sudo install -d -o richart -g richart -m 700 /opt/richart-clone/data
           sudo chown -R richart:richart "$source_dir"
 
-          # The repository is public. Fetching the exact commit avoids uploading
-          # a complete source archive from the GitHub runner on every UI change.
+          # The server uses its own read-only GitHub deploy key. Fetching the
+          # exact commit avoids uploading a complete source archive each time.
+          sudo install -d -o richart -g richart -m 700 /home/richart/.ssh
+          if ! sudo -u richart ssh-keygen -F github.com -f /home/richart/.ssh/known_hosts >/dev/null; then
+            ssh-keyscan -H github.com | sudo tee -a /home/richart/.ssh/known_hosts >/dev/null
+            sudo chown richart:richart /home/richart/.ssh/known_hosts
+            sudo chmod 600 /home/richart/.ssh/known_hosts
+          fi
           if [ ! -d "$source_dir/.git" ]; then
             sudo -u richart git -C "$source_dir" init
             sudo -u richart git -C "$source_dir" remote add origin "$repository_url"
+          else
+            sudo -u richart git -C "$source_dir" remote set-url origin "$repository_url"
           fi
-          sudo -u richart git -C "$source_dir" fetch --depth=1 origin "$release_sha"
+          sudo -u richart env GIT_SSH_COMMAND="ssh -i $source_key -o IdentitiesOnly=yes -o BatchMode=yes" \
+            git -C "$source_dir" fetch --depth=1 origin "$release_sha"
           sudo -u richart git -C "$source_dir" archive "$release_sha" | sudo tar -x -C "$release_dir"
           sudo chown -R richart:richart "$release_dir"
 
