@@ -81,6 +81,7 @@ jobs:
           GRSAI_BASE_URL: ${{ vars.GRSAI_BASE_URL || 'https://grsaiapi.com' }}
           GRSAI_MODEL: ${{ vars.GRSAI_MODEL || 'gemini-3.1-flash-lite' }}
           CONVERSATION_STORE_PATH: /opt/richart-clone/data/conversations.json
+          GENERATED_IMAGE_STORE_PATH: /opt/richart-clone/data/generated
         run: |
           umask 077
           {
@@ -88,6 +89,7 @@ jobs:
             printf 'GRSAI_BASE_URL=%s\n' "$GRSAI_BASE_URL"
             printf 'GRSAI_MODEL=%s\n' "$GRSAI_MODEL"
             printf 'CONVERSATION_STORE_PATH=%s\n' "$CONVERSATION_STORE_PATH"
+            printf 'GENERATED_IMAGE_STORE_PATH=%s\n' "$GENERATED_IMAGE_STORE_PATH"
           } > .richart-clone-runtime.env
 
       - name: Upload release

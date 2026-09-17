@@ -1,4 +1,7 @@
 import type { DesignBrief } from "@/lib/design";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 export type GeneratedImage = {
   url: string;
@@ -8,6 +11,8 @@ const MODEL = "gpt-image-2.5-sunburst";
 const QUALITY = "high";
 const IMAGE_SIZE = "2K";
 const MAX_REFERENCE_LENGTH = 6_000_000;
+const MAX_SAVED_IMAGE_BYTES = 24 * 1024 * 1024;
+const generatedImageDir = process.env.GENERATED_IMAGE_STORE_PATH || join(process.cwd(), "data", "generated");
 const SIZE_BY_RATIO: Record<string, string> = {
   "1:1": "1024x1024",
   "9:16": "1024x1792",
@@ -180,7 +185,39 @@ export async function generateDesignImages(
   const batches = await Promise.all(Array.from({ length: count }, () => createOne(brief, references, constraints, modification)));
   const urls = batches.flat().filter(Boolean).slice(0, count);
   if (!urls.length) throw new Error("生图服务没有返回图片，请稍后重试。");
-  return urls.map((url) => ({ url }));
+  return Promise.all(urls.map(async (url) => ({ url: await saveGeneratedImage(url) })));
+}
+
+function extensionFor(contentType: string): { extension: "png" | "jpg" | "webp"; contentType: string } | null {
+  if (contentType.includes("image/png")) return { extension: "png", contentType: "image/png" };
+  if (contentType.includes("image/webp")) return { extension: "webp", contentType: "image/webp" };
+  if (contentType.includes("image/jpeg") || contentType.includes("image/jpg")) return { extension: "jpg", contentType: "image/jpeg" };
+  return null;
+}
+
+async function saveGeneratedImage(source: string): Promise<string> {
+  const response = await fetch(source, { cache: "no-store" });
+  if (!response.ok) throw new Error("生成图片暂时无法保存，请重新生成。");
+  const metadata = extensionFor(response.headers.get("content-type") || "");
+  if (!metadata) throw new Error("生成图片格式不受支持。");
+  const image = Buffer.from(await response.arrayBuffer());
+  if (!image.length || image.length > MAX_SAVED_IMAGE_BYTES) throw new Error("生成图片文件异常，请重新生成。");
+  const id = `${randomUUID()}.${metadata.extension}`;
+  await mkdir(generatedImageDir, { recursive: true });
+  await writeFile(join(generatedImageDir, id), image, { mode: 0o600 });
+  return `/api/design/image?id=${id}`;
+}
+
+export async function readGeneratedImage(id: string): Promise<{ data: Buffer; contentType: string } | null> {
+  const match = id.match(/^([0-9a-f-]{36})\.(png|jpg|webp)$/i);
+  if (!match) return null;
+  try {
+    const extension = match[2].toLowerCase();
+    const contentType = extension === "jpg" ? "image/jpeg" : `image/${extension}`;
+    return { data: await readFile(join(generatedImageDir, id)), contentType };
+  } catch {
+    return null;
+  }
 }
 
 export function isAllowedImageUrl(value: string): boolean {
@@ -189,7 +226,8 @@ export function isAllowedImageUrl(value: string): boolean {
     return url.protocol === "https:" && (
       url.hostname.endsWith(".grsai-resource.com") ||
       url.hostname.endsWith(".grsai.com") ||
-      url.hostname.endsWith(".grsai.ai")
+      url.hostname.endsWith(".grsai.ai") ||
+      url.hostname.endsWith(".aitohumanize.com")
     );
   } catch {
     return false;

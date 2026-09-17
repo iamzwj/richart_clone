@@ -46,6 +46,18 @@ const fieldPlaceholders: Record<keyof Brief, string> = {
 };
 const stylePresets = ["3D 卡通", "写实风", "极简平面", "国潮插画", "轻奢质感", "赛博朋克"];
 
+function displayImageUrl(url: string): string {
+  return url.startsWith("data:image/") || url.startsWith("/api/design/image") ? url : `/api/design/download?inline=1&url=${encodeURIComponent(url)}`;
+}
+
+function downloadImageUrl(url: string): string {
+  if (url.startsWith("/api/design/image")) {
+    const id = new URL(url, window.location.origin).searchParams.get("id");
+    return id ? `/api/design/download?id=${encodeURIComponent(id)}` : url;
+  }
+  return `/api/design/download?url=${encodeURIComponent(url)}`;
+}
+
 function isSatisfied(message: string): boolean {
   return /^(ok|好的|可以|满意|就这样|没问题)[！!。.]?$/i.test(message.trim());
 }
@@ -457,11 +469,11 @@ export default function Home() {
       }
 
       setPending(false);
-      await generate(nextBrief, active, mode === "review" ? content : undefined, {
+      await generate(nextBrief, active, mode === "review" ? content : undefined, mode === "collect" ? {
         brief: nextBrief,
         sources: nextSources,
         constraints: nextConstraints,
-      });
+      } : undefined);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "暂时无法读取需求，请稍后重试。");
     } finally {
@@ -507,7 +519,7 @@ export default function Home() {
 
   return (
     <main
-      className={`workspace ${draggingReference ? "dragging-reference" : ""}`}
+      className="workspace"
       onDragOver={(event) => { event.preventDefault(); if (!readOnly) setDraggingReference(true); }}
       onDragLeave={(event) => { if (event.currentTarget === event.target) setDraggingReference(false); }}
       onDrop={(event) => { event.preventDefault(); setDraggingReference(false); if (!readOnly) void selectReference(event.dataTransfer.files?.[0]); }}
@@ -603,11 +615,11 @@ export default function Home() {
                     {message.images.map((image, imageIndex) => (
                       <figure key={image.url}>
                         <button type="button" className="image-preview" onClick={() => setPreview(image)} aria-label={`预览生成图 ${imageIndex + 1}`}>
-                          <img src={image.url} alt={`生成的设计方案 ${imageIndex + 1}`} />
+                          <img src={displayImageUrl(image.url)} alt={`生成的设计方案 ${imageIndex + 1}`} />
                         </button>
                         <figcaption>
                           <span>方案 {imageIndex + 1}</span>
-                          <a href={`/api/design/download?url=${encodeURIComponent(image.url)}`}>下载</a>
+                          <a href={downloadImageUrl(image.url)}>下载</a>
                         </figcaption>
                       </figure>
                     ))}
@@ -624,7 +636,7 @@ export default function Home() {
           <div ref={endRef} />
         </div>
 
-        <form onSubmit={send} className="composer">
+        <form onSubmit={send} className={`composer ${draggingReference ? "dragging-reference" : ""}`}>
           {reference && <div className="reference-preview">
             <img src={reference.thumbnail} alt="待参考的上传图片" />
             <button type="button" onClick={() => setReference(null)} aria-label="移除参考图">×</button>
@@ -655,8 +667,8 @@ export default function Home() {
       {preview && <div className="preview-modal" role="dialog" aria-modal="true" aria-label="图片预览" onClick={() => setPreview(null)}>
         <div className="preview-card" onClick={(event) => event.stopPropagation()}>
           <button type="button" className="close-preview" onClick={() => setPreview(null)} aria-label="关闭预览">×</button>
-          <img src={preview.url} alt="生成的设计方案预览" />
-          <a href={`/api/design/download?url=${encodeURIComponent(preview.url)}`}>下载图片</a>
+          <img src={displayImageUrl(preview.url)} alt="生成的设计方案预览" />
+          <a href={downloadImageUrl(preview.url)}>下载图片</a>
         </div>
       </div>}
     </main>

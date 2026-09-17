@@ -7,7 +7,6 @@ button, textarea { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; }
 .workspace { width: min(1180px, 100%); min-height: 100dvh; display: grid; grid-template-columns: 292px minmax(0, 1fr); align-items: center; gap: 18px; margin: 0 auto; padding: clamp(18px, 4vw, 48px); }
-.workspace.dragging-reference::after { content: "松开即可上传参考图"; position: fixed; z-index: 20; inset: 16px; display: grid; place-items: center; border: 2px dashed rgba(255,128,86,.82); border-radius: 22px; background: rgba(15,17,16,.8); color: #ffd1c1; font-size: 18px; font-weight: 620; pointer-events: none; backdrop-filter: blur(4px); }
 .conversation-sidebar, .wechat-window { min-height: min(820px, calc(100dvh - 64px)); height: min(820px, calc(100dvh - 64px)); border: 1px solid var(--line); background: rgba(24, 26, 26, .9); box-shadow: 0 30px 90px rgba(0, 0, 0, .36); backdrop-filter: blur(18px); }
 .conversation-sidebar { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; }
 .conversation-sidebar::after { content: ""; position: absolute; top: 0; right: 18px; left: 18px; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,128,86,.78), transparent); opacity: .8; }
@@ -91,10 +90,10 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .brief-card-footer button { min-height: 34px; padding: 0 13px; border: 0; border-radius: 9px; background: var(--wechat-green); color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; }
 .brief-card-footer button:disabled { cursor: not-allowed; opacity: .42; }
 .brief-constraints { padding: 10px 14px 12px; color: #e6c68c; font-size: 11px; line-height: 1.65; }
-.image-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.image-gallery { width: min(100%, 680px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
 .image-gallery figure { min-width: 0; margin: 0; overflow: hidden; border: 1px solid rgba(239,236,226,.13); border-radius: 14px; background: #202322; }
-.image-preview { display: block; width: 100%; padding: 0; border: 0; background: #101111; cursor: zoom-in; }
-.image-preview img { display: block; width: 100%; aspect-ratio: 1 / 1.18; object-fit: cover; transition: transform .35s ease; }
+.image-preview { width: 100%; height: min(58dvh, 600px); display: grid; place-items: center; padding: 0; border: 0; background: #101111; cursor: zoom-in; }
+.image-preview img { display: block; width: 100%; height: auto; max-height: min(58dvh, 600px); object-fit: contain; transition: transform .35s ease; }
 .image-preview:hover img { transform: scale(1.035); }
 .image-gallery figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 11px; color: var(--muted); font-size: 12px; }
 .image-gallery a, .preview-card a { color: #b9ed81; text-decoration: none; }
@@ -105,7 +104,8 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .typing i:nth-child(3) { animation-delay: .36s; }
 @keyframes blink { to { opacity: .2; transform: translateY(-3px); } }
 .error { align-self: center; max-width: 90%; margin: 0; padding: 9px 13px; border: 1px solid rgba(255,130,112,.28); border-radius: 10px; background: rgba(102, 39, 31, .42); color: #ffc1b7; font-size: 13px; line-height: 1.5; text-align: center; }
-.composer { padding: 13px clamp(16px, 2.6vw, 26px) max(18px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: #1c1f1e; }
+.composer { position: relative; padding: 13px clamp(16px, 2.6vw, 26px) max(18px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: #1c1f1e; }
+.composer.dragging-reference::before { content: "松开即可上传参考图"; position: absolute; z-index: 2; inset: 7px 12px; display: grid; place-items: center; border: 1px dashed rgba(255,128,86,.9); border-radius: 13px; background: rgba(42,26,22,.94); color: #ffd1c1; font-size: 14px; font-weight: 620; pointer-events: none; }
 .composer-row { display: flex; align-items: flex-end; gap: 9px; }
 .composer textarea { min-width: 0; flex: 1; resize: none; min-height: 46px; max-height: 132px; padding: 11px 13px; border: 1px solid rgba(239,236,226,.14); border-radius: 14px; color: var(--text); background: #292c2b; font-size: 15px; line-height: 1.5; transition: border-color .2s ease, background .2s ease; }
 .composer textarea:focus { border-color: rgba(255,128,86,.62); background: #2d302f; }
