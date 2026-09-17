@@ -7,6 +7,7 @@ type Brief = {
   title: string;
   subtitle: string;
   copy: string;
+  supplement: string;
   size: string;
   style: string;
 };
@@ -21,12 +22,13 @@ type Message = {
   brief?: Brief;
   sources?: Partial<Record<keyof Brief, FieldSource>>;
   constraints?: string[];
+  designPrompt?: string;
 };
 type ReferenceImage = { dataUrl: string; thumbnail: string; name: string };
 type ConversationSummary = { id: string; title: string; createdAt: string; updatedAt: string; messageCount: number };
 type ActiveConversation = { id: string; token: string };
 
-const emptyBrief: Brief = { title: "", subtitle: "", copy: "", size: DEFAULT_DESIGN_SIZE, style: "" };
+const emptyBrief: Brief = { title: "", subtitle: "", copy: "", supplement: "", size: DEFAULT_DESIGN_SIZE, style: "" };
 const welcome: Message = {
   role: "assistant",
   content: "你好，我是张文杰设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。\n\n你可以跟我说你要做什么，例如：设计一个海报，主标题是xxx，副标题是xxx，下面的文案是xxx，尺寸是：9:16，3d卡通风格。",
@@ -35,6 +37,7 @@ const fieldLabels: Record<keyof Brief, string> = {
   title: "主标题",
   subtitle: "副标题（可选）",
   copy: "文案（可选）",
+  supplement: "补充说明（可选）",
   size: "尺寸",
   style: "风格",
 };
@@ -47,6 +50,7 @@ const fieldPlaceholders: Record<keyof Brief, string> = {
   title: "例如：有问题找助理",
   subtitle: "例如：24 小时在线响应",
   copy: "例如：说出你的问题，马上获得帮助",
+  supplement: "例如：避免使用人物和渐变背景",
   size: "选择尺寸",
   style: "输入或选择一种风格",
 };
@@ -110,7 +114,7 @@ function isDesignIntent(message: string): boolean {
   return /(海报|设计|方案|图片|图像|改图|修改|调整|换成|生成|主标题|副标题|文案|尺寸|风格|配色|背景|人物|补全|二维码|logo|画面)/i.test(message);
 }
 function isGenerationProgress(message: Message): boolean {
-  return message.role === "assistant" && /(我来帮你生成图片|我来帮你改)/.test(message.content);
+  return message.role === "assistant" && /(我来帮你做|我来帮你改)/.test(message.content);
 }
 function readImage(file: File): Promise<string> {
   if (!file.type.startsWith("image/")) return Promise.reject(new Error("请上传图片文件。"));
@@ -190,11 +194,6 @@ function updateConstraints(message: string, current: string[]): string[] {
   return [...new Set([...current, ...additions])];
 }
 
-function formatConversationTime(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "刚刚" : new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(date);
-}
-
 function WelcomeMessage() {
   return <div className="welcome-bubble">
     <p className="welcome-greeting">你好，我是<strong>张文杰设计助理</strong>。</p>
@@ -227,6 +226,8 @@ export default function Home() {
   const [preview, setPreview] = useState<GeneratedImage | null>(null);
   const [editingField, setEditingField] = useState<keyof Brief | null>(null);
   const [editingValue, setEditingValue] = useState("");
+  const [editingPromptIndex, setEditingPromptIndex] = useState<number | null>(null);
+  const [editingPromptValue, setEditingPromptValue] = useState("");
   const [briefDrafts, setBriefDrafts] = useState<Partial<Brief>>({});
   const [draggingReference, setDraggingReference] = useState(false);
   const [activity, setActivity] = useState<"reply" | "design" | null>(null);
@@ -365,6 +366,45 @@ export default function Home() {
     setEditingValue("");
   }
 
+  async function persistDesignPrompt(messageIndex: number, message: Message, rawValue: string): Promise<Message | null> {
+    const designPrompt = rawValue.trim();
+    if (!designPrompt) return null;
+    const updatedMessage = { ...message, designPrompt };
+    setMessages((current) => current.map((item, index) => index === messageIndex ? updatedMessage : item));
+    if (!conversationId || !writeToken) return updatedMessage;
+    const storedMessageIndex = messages[0] === welcome ? messageIndex - 1 : messageIndex;
+    if (storedMessageIndex < 0) return updatedMessage;
+    try {
+      await saveUpdatedMessage({ id: conversationId, token: writeToken }, storedMessageIndex, updatedMessage);
+      return updatedMessage;
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "提示词保存失败，请重试。");
+      return null;
+    }
+  }
+
+  async function generateFromEditedPrompt(messageIndex: number, message: Message) {
+    const updatedMessage = await persistDesignPrompt(messageIndex, message, editingPromptValue);
+    setEditingPromptIndex(null);
+    setEditingPromptValue("");
+    if (!updatedMessage?.designPrompt || pending) return;
+    try {
+      const active = await ensureConversation();
+      const nextBrief = updatedMessage.brief || brief;
+      await generate(
+        nextBrief,
+        active,
+        undefined,
+        { brief: nextBrief, sources: updatedMessage.sources || sources, constraints: updatedMessage.constraints || constraints },
+        undefined,
+        nextBrief.title,
+        updatedMessage.designPrompt,
+      );
+    } catch (generationError) {
+      setError(generationError instanceof Error ? generationError.message : "暂时无法开始设计，请稍后重试。");
+    }
+  }
+
   async function generateFromBriefCard(message: Message) {
     const missing = missingRequiredBriefFields(brief);
     if (missing.length) {
@@ -414,17 +454,34 @@ export default function Home() {
     count = 2,
     activeConstraints = constraints,
     filenamePrompt?: string,
+    prompt?: string,
   ): Promise<GeneratedImage[]> {
     const response = await fetch("/api/design/generate", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ brief: nextBrief, references, modification, constraints: activeConstraints, count, filenamePrompt }),
+      body: JSON.stringify({ brief: nextBrief, references, modification, constraints: activeConstraints, count, filenamePrompt, prompt }),
     });
     const data = await response.json().catch(() => ({})) as { images?: GeneratedImage[]; error?: string };
     if (!response.ok || !data.images?.length) {
       throw new Error(data.error || "生图失败，请稍后重试。");
     }
     return data.images;
+  }
+
+  async function createDesignPrompt(
+    nextBrief: Brief,
+    activeConstraints: string[],
+    modification: string | undefined,
+    hasReference: boolean,
+  ): Promise<string> {
+    const response = await fetch("/api/design/prompt", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ brief: nextBrief, constraints: activeConstraints, modification, hasReference }),
+    });
+    const data = await response.json().catch(() => ({})) as { prompt?: string; error?: string };
+    if (!response.ok || !data.prompt) throw new Error(data.error || "暂时无法生成设计提示词，请稍后重试。");
+    return data.prompt;
   }
 
   async function generate(
@@ -434,13 +491,14 @@ export default function Home() {
     snapshot?: Pick<Message, "brief" | "sources" | "constraints">,
     directReferences?: string[],
     filenamePrompt?: string,
+    promptOverride?: string,
   ) {
     setPending(true);
     setActivity("design");
     setError("");
     const progressMessage: Message = {
       role: "assistant",
-      content: modification ? "收到，我来帮你改…" : "收到，我来帮你生成图片…",
+      content: modification ? "收到，我来帮你改…" : "收到，我来帮你做…",
       ...snapshot,
     };
     setMessages((current) => [...current, progressMessage]);
@@ -451,10 +509,17 @@ export default function Home() {
       const sources = directReferences || (reference
         ? [reference.dataUrl]
         : generatedImages.map((image) => image.url).slice(0, 2));
+      const designPrompt = promptOverride || await createDesignPrompt(nextBrief, activeConstraints, modification, sources.length > 0);
+      const promptMessage = { ...progressMessage, designPrompt };
+      setMessages((current) => current.map((message, index) => index === current.length - 1 ? promptMessage : message));
+      const storedPromptIndex = messages[0] === welcome ? messages.length - 1 : messages.length;
+      void saveUpdatedMessage(active, storedPromptIndex, promptMessage).catch((promptError) => {
+        setError(promptError instanceof Error ? promptError.message : "提示词保存失败，请重试。");
+      });
 
       const images = modification && sources.length > 1
-        ? (await Promise.all(sources.map((source) => createImages(nextBrief, [source], modification, 1, activeConstraints, filenamePrompt)))).flat()
-        : await createImages(nextBrief, sources, modification, 2, activeConstraints, filenamePrompt);
+        ? (await Promise.all(sources.map((source) => createImages(nextBrief, [source], modification, 1, activeConstraints, filenamePrompt, designPrompt)))).flat()
+        : await createImages(nextBrief, sources, modification, 2, activeConstraints, filenamePrompt, designPrompt);
 
       const result = images.slice(0, 2);
       setGeneratedImages(result);
@@ -615,7 +680,6 @@ export default function Home() {
               }}
             >
               <strong>{conversation.title}</strong>
-              <span>{conversation.messageCount} 条消息 · {formatConversationTime(conversation.updatedAt)}</span>
             </button>
           ))}
         </div>
@@ -687,6 +751,23 @@ export default function Home() {
                   ))}
                   {message.constraints?.length ? <div className="brief-constraints">约束：{message.constraints.join(" · ")}</div> : null}
                   {index === latestBriefIndex && !readOnly && <div className="brief-card-footer"><button type="button" disabled={missingRequiredBriefFields(brief).length > 0 || pending} onClick={() => { void generateFromBriefCard(message); }}>生成方案</button></div>}
+                </section>}
+                {message.designPrompt && <section className="design-prompt-card" aria-label="生图提示词">
+                  <div className="design-prompt-header">
+                    <span>生图 Prompt</span>
+                    {!readOnly && editingPromptIndex !== index && <button className="prompt-edit" type="button" onClick={() => { setEditingPromptIndex(index); setEditingPromptValue(message.designPrompt || ""); }} aria-label="编辑生图提示词" title="编辑生图提示词">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.8V20h3.2L18.5 8.7l-3.2-3.2L4 16.8Zm13.8-12.3 1.7-1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1l-1.7 1.7-3-3Z" /></svg>
+                    </button>}
+                  </div>
+                  {editingPromptIndex === index ? <div className="design-prompt-editor" onBlur={(event) => {
+                    if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+                    void persistDesignPrompt(index, message, editingPromptValue);
+                    setEditingPromptIndex(null);
+                    setEditingPromptValue("");
+                  }}>
+                    <textarea autoFocus value={editingPromptValue} onChange={(event) => setEditingPromptValue(event.target.value)} aria-label="编辑生图提示词" />
+                    <button type="button" disabled={pending || !editingPromptValue.trim()} onMouseDown={(event) => event.preventDefault()} onClick={() => { void generateFromEditedPrompt(index, message); }}>生成</button>
+                  </div> : <pre>{message.designPrompt}</pre>}
                 </section>}
                 {message.images?.length ? (
                   <div className="image-gallery">

@@ -7,6 +7,7 @@ export type ConversationBrief = {
   title: string;
   subtitle: string;
   copy: string;
+  supplement: string;
   size: string;
   style: string;
 };
@@ -18,6 +19,7 @@ export type ConversationMessage = {
   brief?: ConversationBrief;
   sources?: Partial<Record<keyof ConversationBrief, "user" | "ai">>;
   constraints?: string[];
+  designPrompt?: string;
 };
 type StoredConversation = {
   id: string;
@@ -64,6 +66,7 @@ function cleanMessage(value: unknown): ConversationMessage | null {
     title: cleanText(rawBrief.title, 1_000),
     subtitle: cleanText(rawBrief.subtitle, 1_000),
     copy: cleanText(rawBrief.copy, 1_000),
+    supplement: cleanText(rawBrief.supplement, 1_000),
     size: cleanText(rawBrief.size, 100),
     style: cleanText(rawBrief.style, 1_000),
   } : undefined;
@@ -74,9 +77,10 @@ function cleanMessage(value: unknown): ConversationMessage | null {
   const constraints = Array.isArray(source.constraints)
     ? source.constraints.map((item) => cleanText(item, 200)).filter(Boolean).slice(0, 12)
     : undefined;
+  const designPrompt = cleanText(source.designPrompt, 8_000) || undefined;
 
-  if (!content && !images?.length && !referenceThumbnail && !brief) return null;
-  return { role: source.role, content, images, referenceThumbnail, brief, sources, constraints };
+  if (!content && !images?.length && !referenceThumbnail && !brief && !designPrompt) return null;
+  return { role: source.role, content, images, referenceThumbnail, brief, sources, constraints, designPrompt };
 }
 
 async function readStore(): Promise<StoredConversation[]> {

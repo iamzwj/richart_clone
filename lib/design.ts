@@ -5,6 +5,7 @@ export type DesignBrief = {
   title: string;
   subtitle: string;
   copy: string;
+  supplement: string;
   size: string;
   style: string;
 };
@@ -13,6 +14,7 @@ export const emptyDesignBrief: DesignBrief = {
   title: "",
   subtitle: "",
   copy: "",
+  supplement: "",
   size: DEFAULT_DESIGN_SIZE,
   style: "",
 };
@@ -21,6 +23,7 @@ export const fieldLabels: Record<keyof DesignBrief, string> = {
   title: "主标题",
   subtitle: "副标题",
   copy: "文案",
+  supplement: "补充说明（可选）",
   size: "尺寸",
   style: "风格",
 };
@@ -49,6 +52,7 @@ function parseResponse(content: string): Partial<DesignBrief> {
       title: clean(value.title),
       subtitle: clean(value.subtitle),
       copy: clean(value.copy),
+      supplement: clean(value.supplement),
       size: clean(value.size),
       style: clean(value.style),
     };
@@ -67,6 +71,7 @@ export function normaliseBrief(value: Partial<DesignBrief>): DesignBrief {
     title: clean(value.title),
     subtitle: clean(value.subtitle),
     copy: clean(value.copy),
+    supplement: clean(value.supplement),
     size: normaliseDesignSize(value.size),
     style: clean(value.style),
   };
@@ -86,7 +91,7 @@ export async function extractDesignBrief(
     messages: [
       {
         role: "system",
-        content: `Extract a Chinese design brief. Return only a JSON object with exactly these keys: title, subtitle, copy, size, style. Each value must be a string. Current brief: ${JSON.stringify(current)}. Preserve every current value unless the newest user message explicitly provides a replacement. Extract only stated facts; use an empty string for missing fields. Size may be an aspect ratio such as 9:16, 16:9, 1:1, or a pixel dimension. Do not add explanations.`,
+        content: `Extract a Chinese design brief. Return only a JSON object with exactly these keys: title, subtitle, copy, supplement, size, style. Each value must be a string. Current brief: ${JSON.stringify(current)}. Preserve every current value unless the newest user message explicitly provides a replacement. Extract only stated facts; use an empty string for missing fields. Size may be an aspect ratio such as 9:16, 16:9, 1:1, or a pixel dimension. Do not add explanations.`,
       },
       { role: "user", content: message.slice(0, 2_000) },
     ],
@@ -97,6 +102,7 @@ export async function extractDesignBrief(
     title: extracted.title || current.title,
     subtitle: extracted.subtitle || current.subtitle,
     copy: extracted.copy || current.copy,
+    supplement: extracted.supplement || current.supplement,
     size: extracted.size || findExplicitSize(message) || current.size,
     style: extracted.style || current.style,
   });

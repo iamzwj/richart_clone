@@ -154,7 +154,7 @@ async function pollResult(id: string): Promise<string[]> {
   throw new Error("生图等待超时，请稍后重试。");
 }
 
-function createPrompt(brief: DesignBrief, constraints: string[], modification?: string, isReferenceEdit = false): string {
+export function buildDesignPrompt(brief: DesignBrief, constraints: string[], modification?: string, isReferenceEdit = false): string {
   if (isReferenceEdit) {
     return [
       "Image editing task: use the supplied image as the source image.",
@@ -172,6 +172,7 @@ function createPrompt(brief: DesignBrief, constraints: string[], modification?: 
     `Main title (verbatim): "${brief.title}"`,
     brief.subtitle ? `Subtitle (verbatim): "${brief.subtitle}"` : "Do not include a subtitle.",
     brief.copy ? `Body copy (verbatim): "${brief.copy}"` : "Do not include body copy.",
+    brief.supplement ? `Supplemental direction: ${brief.supplement}` : "",
     `Canvas aspect ratio: ${brief.size}; render at 2K.`,
     `Style/medium: ${brief.style}.`,
     "Constraints: Preserve Chinese copy exactly where possible, create clear information hierarchy, keep generous safe margins, no watermark, no extra brand names.",
@@ -180,7 +181,7 @@ function createPrompt(brief: DesignBrief, constraints: string[], modification?: 
   ].filter(Boolean).join("\n");
 }
 
-async function createOne(brief: DesignBrief, references: string[], constraints: string[], modification?: string): Promise<string[]> {
+async function createOne(brief: DesignBrief, references: string[], constraints: string[], modification?: string, prompt?: string): Promise<string[]> {
   if (references.some((reference) => reference.length > MAX_REFERENCE_LENGTH)) {
     throw new Error("参考图过大，请上传不超过 4MB 的图片。");
   }
@@ -190,7 +191,7 @@ async function createOne(brief: DesignBrief, references: string[], constraints: 
     headers: apiHeaders(),
     body: JSON.stringify({
       model: MODEL,
-      prompt: createPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
+      prompt: prompt || buildDesignPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
       size: designResolutionFor(brief.size),
       imageSize: IMAGE_SIZE,
       quality: QUALITY,
@@ -212,8 +213,9 @@ export async function generateDesignImages(
   modification?: string,
   count = 2,
   filenamePrompt?: string,
+  prompt?: string,
 ): Promise<GeneratedImage[]> {
-  const batches = await Promise.all(Array.from({ length: count }, () => createOne(brief, references, constraints, modification)));
+  const batches = await Promise.all(Array.from({ length: count }, () => createOne(brief, references, constraints, modification, prompt)));
   const urls = batches.flat().filter(Boolean).slice(0, count);
   if (!urls.length) throw new Error("生图服务没有返回图片，请稍后重试。");
   const namingPrompt = filenamePrompt || modification || brief.title || brief.copy || "设计方案";
