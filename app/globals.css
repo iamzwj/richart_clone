@@ -90,10 +90,10 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .brief-card-footer button { min-height: 34px; padding: 0 13px; border: 0; border-radius: 9px; background: var(--wechat-green); color: #fff; cursor: pointer; font-size: 12px; font-weight: 600; }
 .brief-card-footer button:disabled { cursor: not-allowed; opacity: .42; }
 .brief-constraints { padding: 10px 14px 12px; color: #e6c68c; font-size: 11px; line-height: 1.65; }
-.image-gallery { width: min(100%, 680px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.image-gallery { width: min(100%, 560px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
 .image-gallery figure { min-width: 0; margin: 0; overflow: hidden; border: 1px solid rgba(239,236,226,.13); border-radius: 14px; background: #202322; }
-.image-preview { width: 100%; height: min(58dvh, 600px); display: grid; place-items: center; padding: 0; border: 0; background: #101111; cursor: zoom-in; }
-.image-preview img { display: block; width: 100%; height: auto; max-height: min(58dvh, 600px); object-fit: contain; transition: transform .35s ease; }
+.image-preview { width: 100%; display: block; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.image-preview img { display: block; width: auto; max-width: 100%; height: auto; max-height: min(54dvh, 520px); margin: 0 auto; object-fit: contain; transition: transform .35s ease; }
 .image-preview:hover img { transform: scale(1.035); }
 .image-gallery figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 11px; color: var(--muted); font-size: 12px; }
 .image-gallery a, .preview-card a { color: #b9ed81; text-decoration: none; }

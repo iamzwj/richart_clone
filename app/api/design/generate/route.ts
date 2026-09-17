@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normaliseBrief } from "@/lib/design";
-import { generateDesignImages, isAllowedImageUrl } from "@/lib/image";
+import { generateDesignImages, isAllowedImageUrl, readGeneratedImage } from "@/lib/image";
 import { isRateLimited } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 function clientAddress(request: NextRequest): string {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+}
+
+async function normaliseReference(value: string): Promise<string | null> {
+  if (value.startsWith("data:image/") || isAllowedImageUrl(value)) return value;
+
+  // Generated images are stored locally so the temporary upstream URL cannot expire.
+  // Convert that local image back to a data URL when it is used as the source for a revision.
+  if (value.startsWith("/api/design/image")) {
+    const id = new URL(value, "http://localhost").searchParams.get("id") || "";
+    const image = await readGeneratedImage(id);
+    return image ? `data:${image.contentType};base64,${image.data.toString("base64")}` : null;
+  }
+
+  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -25,9 +39,10 @@ export async function POST(request: NextRequest) {
     const brief = normaliseBrief(
       body.brief && typeof body.brief === "object" ? body.brief as Record<string, unknown> : {},
     );
-    const references = Array.isArray(body.references)
-      ? body.references.filter((item): item is string => typeof item === "string" && (item.startsWith("data:image/") || isAllowedImageUrl(item))).slice(0, 1)
+    const rawReferences = Array.isArray(body.references)
+      ? body.references.filter((item): item is string => typeof item === "string").slice(0, 1)
       : [];
+    const references = (await Promise.all(rawReferences.map(normaliseReference))).filter((item): item is string => Boolean(item));
     const modification = typeof body.modification === "string" ? body.modification.trim().slice(0, 2_000) : undefined;
     const isReferenceEdit = references.length > 0 && Boolean(modification);
     if (!isReferenceEdit && Object.values(brief).some((value) => !value)) {
