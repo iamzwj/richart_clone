@@ -65,7 +65,7 @@ function isDesignIntent(message: string): boolean {
   return /(海报|设计|方案|图片|图像|改图|修改|调整|换成|生成|主标题|副标题|文案|尺寸|风格|配色|背景|人物|补全|二维码|logo|画面)/i.test(message);
 }
 function isGenerationProgress(message: Message): boolean {
-  return message.role === "assistant" && /(正在根据你的修改方向重新设计|开始为你设计)/.test(message.content);
+  return message.role === "assistant" && /(我来帮你生成图片|我来帮你改)/.test(message.content);
 }
 function readImage(file: File): Promise<string> {
   if (!file.type.startsWith("image/")) return Promise.reject(new Error("请上传图片文件。"));
@@ -390,7 +390,7 @@ export default function Home() {
     setError("");
     const progressMessage: Message = {
       role: "assistant",
-      content: modification ? "收到，我正在根据你的修改方向重新设计…" : "信息已收齐，我开始为你设计，请稍等…",
+      content: modification ? "收到，我来帮你改…" : "收到，我来帮你生成图片…",
       ...snapshot,
     };
     setMessages((current) => [...current, progressMessage]);
@@ -412,9 +412,7 @@ export default function Home() {
       setMode("review");
       const resultMessage: Message = {
         role: "assistant",
-        content: result.length > 1
-          ? "我为你生成了两张方案。这两个图 ok 么？如果不满意，我可以继续生成，或者你跟我说修改方向。"
-          : "我为你生成了一张方案。这张图 ok 么？如果不满意，我可以继续生成，或者你跟我说修改方向。",
+        content: "",
         images: result,
       };
       setMessages((current) => [...current, resultMessage]);
