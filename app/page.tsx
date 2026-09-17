@@ -369,7 +369,10 @@ export default function Home() {
     <main className="workspace">
       <aside className="conversation-sidebar" aria-label="公开对话列表">
         <div className="sidebar-header">
-          <div><h2>对话记录</h2><p>所有访客可查看</p></div>
+          <div className="sidebar-title">
+            <img src="/zhangwenjie-avatar.png" alt="" />
+            <div><h2>对话记录</h2><p>所有访客可查看</p></div>
+          </div>
           <button type="button" onClick={resetConversation} disabled={pending} aria-label="新建对话">＋</button>
         </div>
         <div className="sidebar-list">
@@ -399,11 +402,11 @@ export default function Home() {
       </aside>
       <section className="wechat-window" aria-label={`与${assistantName}对话`}>
         <header className="chat-header">
-          <div className="header-spacer">{readOnly ? "只读" : ""}</div>
+          <div className="header-identity" aria-hidden="true"><img src="/zhangwenjie-avatar.png" alt="" /></div>
           <div className="contact">
             <h1 aria-live="polite">{loadingConversation ? "正在打开对话…" : pending ? "对方正在输入…" : assistantName}</h1>
           </div>
-          <button className="new-chat" type="button" disabled={pending} onClick={resetConversation} aria-label="新对话" title="新对话">↻</button>
+          <button className="new-chat" type="button" disabled={pending} onClick={resetConversation} aria-label="新对话" title="新对话">＋</button>
         </header>
 
         <div className="conversation" role="log" aria-label="对话记录" aria-live="polite">
