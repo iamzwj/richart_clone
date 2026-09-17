@@ -37,9 +37,9 @@ const fieldLabels: Record<keyof Brief, string> = {
   title: "主标题 *",
   subtitle: "副标题",
   copy: "文案",
-  supplement: "补充说明",
   size: "比例 *",
   style: "风格 *",
+  supplement: "补充说明",
 };
 const requiredBriefFields: (keyof Brief)[] = ["title", "size", "style"];
 
