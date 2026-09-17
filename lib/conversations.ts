@@ -159,3 +159,25 @@ export async function appendConversationMessage(
   });
 }
 
+export async function replaceConversationMessage(
+  id: string,
+  token: string | null,
+  messageIndex: number,
+  message: unknown,
+): Promise<PublicConversation | null> {
+  const cleaned = cleanMessage(message);
+  if (!cleaned || !Number.isInteger(messageIndex) || messageIndex < 0) {
+    throw new Error("消息格式不正确。");
+  }
+
+  return mutate((conversations) => {
+    const conversation = conversations.find((item) => item.id === id);
+    if (!conversation) return null;
+    if (!token || token !== conversation.token) throw new Error("只读对话不能修改。");
+    if (!conversation.messages[messageIndex]) throw new Error("要更新的需求卡片不存在。");
+
+    conversation.messages[messageIndex] = cleaned;
+    conversation.updatedAt = new Date().toISOString();
+    return publicConversation(conversation);
+  });
+}

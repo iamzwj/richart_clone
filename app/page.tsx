@@ -56,9 +56,14 @@ function readImage(file: File): Promise<string> {
 
 function applyRecommendations(brief: Brief, message: string): { brief: Brief; fields: (keyof Brief)[] } {
   const delegated = /(都行|你看着|随便|没要求)/.test(message);
+  const isPoster = /海报|poster/i.test(message) || /海报|poster/i.test(brief.title);
   const next = { ...brief };
   const fields: (keyof Brief)[] = [];
   const delegatedValue = (value: string) => /(都行|你看着|随便|没要求)/.test(value);
+  if (!next.size && isPoster) {
+    next.size = "9:16";
+    fields.push("size");
+  }
   if ((!next.size || delegatedValue(next.size)) && (delegated || /(?:尺寸|比例)[^。！!，,]{0,12}(?:都行|你看着|随便|没要求)/.test(message))) {
     next.size = "9:16";
     fields.push("size");
@@ -68,6 +73,16 @@ function applyRecommendations(brief: Brief, message: string): { brief: Brief; fi
     fields.push("style");
   }
   return { brief: next, fields };
+}
+
+function applyPosterSizeDefault(messages: Message[]): Message[] {
+  const isPosterConversation = messages.some((message) => message.role === "user" && /海报|poster/i.test(message.content));
+  if (!isPosterConversation) return messages;
+  return messages.map((message) => message.brief && !message.brief.size ? {
+    ...message,
+    brief: { ...message.brief, size: "9:16" },
+    sources: { ...message.sources, size: "ai" },
+  } : message);
 }
 
 function updateConstraints(message: string, current: string[]): string[] {
@@ -102,6 +117,8 @@ export default function Home() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [preview, setPreview] = useState<GeneratedImage | null>(null);
+  const [editingField, setEditingField] = useState<keyof Brief | null>(null);
+  const [editingValue, setEditingValue] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const name = process.env.NEXT_PUBLIC_CLONE_NAME || "张文杰";
@@ -132,7 +149,7 @@ export default function Home() {
       setConversationId(id);
       setWriteToken(token);
       setReadOnly(!token);
-      const loadedMessages = data.conversation.messages?.length ? data.conversation.messages : [welcome];
+      const loadedMessages = applyPosterSizeDefault(data.conversation.messages?.length ? data.conversation.messages : [welcome]);
       const latestBrief = [...loadedMessages].reverse().find((message) => message.brief);
       setMessages(loadedMessages);
       setBrief(latestBrief?.brief || emptyBrief);
@@ -191,6 +208,38 @@ export default function Home() {
       body: JSON.stringify({ message }),
     }).catch(() => undefined);
     void refreshConversationList();
+  }
+
+  async function saveUpdatedMessage(active: ActiveConversation, messageIndex: number, message: Message) {
+    const response = await fetch(`/api/conversations/${active.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-conversation-token": active.token },
+      body: JSON.stringify({ messageIndex, message }),
+    });
+    if (!response.ok) throw new Error("需求卡片保存失败，请重试。");
+    void refreshConversationList();
+  }
+
+  async function commitBriefEdit(messageIndex: number, message: Message) {
+    if (!editingField || !editingValue.trim() || !message.brief) return;
+    const nextBrief = { ...brief, [editingField]: editingValue.trim() };
+    const nextSources = { ...sources, [editingField]: "user" as FieldSource };
+    const updatedMessage = {
+      ...message,
+      brief: { ...message.brief, [editingField]: editingValue.trim() },
+      sources: { ...message.sources, [editingField]: "user" as FieldSource },
+    };
+    setBrief(nextBrief);
+    setSources(nextSources);
+    setMessages((current) => current.map((item, index) => index === messageIndex ? updatedMessage : item));
+    setEditingField(null);
+    setEditingValue("");
+    if (!conversationId || !writeToken) return;
+    try {
+      await saveUpdatedMessage({ id: conversationId, token: writeToken }, messageIndex, updatedMessage);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "需求卡片保存失败，请重试。");
+    }
   }
 
   async function extractBrief(message: string, current: Brief): Promise<{ brief: Brief; missing: (keyof Brief)[] }> {
@@ -363,6 +412,8 @@ export default function Home() {
     setMode("collect");
     setInput("");
     setError("");
+    setEditingField(null);
+    setEditingValue("");
   }
 
   return (
@@ -422,10 +473,22 @@ export default function Home() {
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
                     <div className="brief-field" key={field}>
                       <span>{fieldLabels[field]}</span>
-                      <b>{message.brief?.[field] || "待确认"}</b>
-                      {message.brief?.[field] && <em className={message.sources?.[field] === "ai" ? "ai" : "user"}>
+                      {editingField === field && index === messages.length - 1 ? <input
+                        autoFocus
+                        value={editingValue}
+                        onChange={(event) => setEditingValue(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") void commitBriefEdit(index, message);
+                          if (event.key === "Escape") { setEditingField(null); setEditingValue(""); }
+                        }}
+                        aria-label={`编辑${fieldLabels[field]}`}
+                      /> : <b>{message.brief?.[field] || "待确认"}</b>}
+                      {message.brief?.[field] && editingField !== field && <em className={message.sources?.[field] === "ai" ? "ai" : "user"}>
                         {message.sources?.[field] === "ai" ? "AI 推荐" : "用户提供"}
                       </em>}
+                      {index === messages.length - 1 && !readOnly && !pending && (editingField === field ? <button className="brief-edit confirm" type="button" onClick={() => { void commitBriefEdit(index, message); }} aria-label={`保存${fieldLabels[field]}`}>✓</button> : <button className="brief-edit" type="button" onClick={() => { setEditingField(field); setEditingValue(message.brief?.[field] || ""); }} aria-label={`编辑${fieldLabels[field]}`} title={`编辑${fieldLabels[field]}`}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.8V20h3.2L18.5 8.7l-3.2-3.2L4 16.8Zm13.8-12.3 1.7-1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1l-1.7 1.7-3-3Z" /></svg>
+                      </button>)}
                     </div>
                   ))}
                   {message.constraints?.length ? <div className="brief-constraints">约束：{message.constraints.join(" · ")}</div> : null}
