@@ -36,19 +36,6 @@ jobs:
           npm run typecheck
           npm run build
 
-      - name: Package source
-        if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
-        run: |
-          archive_name="richart-clone-${{ github.sha }}.tar.gz"
-          tar \
-            --exclude-vcs \
-            --exclude=node_modules \
-            --exclude=.next \
-            --exclude=.env \
-            --exclude=.env.local \
-          -czf "/tmp/$archive_name" .
-          mv "/tmp/$archive_name" "$archive_name"
-
       - name: Configure deployment SSH
         if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
         env:
@@ -92,7 +79,7 @@ jobs:
             printf 'GENERATED_IMAGE_STORE_PATH=%s\n' "$GENERATED_IMAGE_STORE_PATH"
           } > .richart-clone-runtime.env
 
-      - name: Upload release
+      - name: Upload runtime configuration
         if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -100,8 +87,7 @@ jobs:
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
         run: |
           scp -i "$HOME/.ssh/richart-clone-deploy" -P "$DEPLOY_PORT" -o BatchMode=yes \
-            richart-clone-${{ github.sha }}.tar.gz .richart-clone-runtime.env \
-            "$DEPLOY_USER@$DEPLOY_HOST:/tmp/"
+            .richart-clone-runtime.env "$DEPLOY_USER@$DEPLOY_HOST:/tmp/"
 
       - name: Activate release
         if: ${{ env.DEPLOY_HOST_CONFIGURED != '' && env.DEPLOY_USER_CONFIGURED != '' && env.DEPLOY_KEY_CONFIGURED != '' && env.DEPLOY_FINGERPRINT_CONFIGURED != '' && env.GRSAI_KEY_CONFIGURED != '' }}
@@ -110,23 +96,33 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          REPOSITORY_URL: https://github.com/${{ github.repository }}.git
         run: |
           ssh -i "$HOME/.ssh/richart-clone-deploy" -p "$DEPLOY_PORT" -o BatchMode=yes \
-            "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$RELEASE_SHA'" <<'EOF'
+            "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$RELEASE_SHA' '$REPOSITORY_URL'" <<'EOF'
           set -euo pipefail
           release_sha="$1"
+          repository_url="$2"
           app_dir=/opt/richart-clone
+          source_dir="$app_dir/source"
           release_dir="$app_dir/releases/$release_sha"
-          archive="/tmp/richart-clone-$release_sha.tar.gz"
           runtime_env=/tmp/.richart-clone-runtime.env
 
-          sudo mkdir -p "$release_dir"
+          sudo mkdir -p "$release_dir" "$source_dir"
           sudo install -d -o richart -g richart -m 700 /opt/richart-clone/data
-          sudo tar -xzf "$archive" -C "$release_dir"
-          sudo rm -f "$archive"
+          sudo chown -R richart:richart "$source_dir"
+
+          # The repository is public. Fetching the exact commit avoids uploading
+          # a complete source archive from the GitHub runner on every UI change.
+          if [ ! -d "$source_dir/.git" ]; then
+            sudo -u richart git -C "$source_dir" init
+            sudo -u richart git -C "$source_dir" remote add origin "$repository_url"
+          fi
+          sudo -u richart git -C "$source_dir" fetch --depth=1 origin "$release_sha"
+          sudo -u richart git -C "$source_dir" archive "$release_sha" | sudo tar -x -C "$release_dir"
           sudo chown -R richart:richart "$release_dir"
 
-          sudo -u richart bash -lc "cd '$release_dir' && npm ci && npm run build"
+          sudo -u richart bash -lc "cd '$release_dir' && npm ci --prefer-offline && npm run build"
           sudo install -o richart -g richart -m 600 "$runtime_env" "$release_dir/.env"
           sudo rm -f "$runtime_env"
 
