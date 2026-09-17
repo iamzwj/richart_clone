@@ -45,6 +45,45 @@ const fieldPlaceholders: Record<keyof Brief, string> = {
   style: "输入或选择一种风格",
 };
 const stylePresets = ["3D 卡通", "写实风", "极简平面", "国潮插画", "轻奢质感", "赛博朋克"];
+const activeConversationKey = "zhangwenjie-design-active-conversation";
+const ownedConversationKey = "zhangwenjie-design-owned-conversations";
+const legacyConversationKey = "zhangwenjie-design-conversation";
+
+function ownedConversationTokens(): Record<string, string> {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(ownedConversationKey) || "{}") as unknown;
+    if (!value || typeof value !== "object") return {};
+    return Object.fromEntries(Object.entries(value).filter(([id, token]) => typeof id === "string" && typeof token === "string" && token.length > 0));
+  } catch {
+    return {};
+  }
+}
+
+function rememberConversation(active: ActiveConversation) {
+  const owned = ownedConversationTokens();
+  owned[active.id] = active.token;
+  window.localStorage.setItem(ownedConversationKey, JSON.stringify(owned));
+  window.localStorage.setItem(activeConversationKey, active.id);
+}
+
+function ownedConversationToken(id: string): string | null {
+  return ownedConversationTokens()[id] || null;
+}
+
+function migrateLegacyConversation(): ActiveConversation | null {
+  try {
+    const saved = window.sessionStorage.getItem(legacyConversationKey);
+    if (!saved) return null;
+    const active = JSON.parse(saved) as ActiveConversation;
+    if (!active.id || !active.token) return null;
+    rememberConversation(active);
+    return active;
+  } catch {
+    return null;
+  } finally {
+    window.sessionStorage.removeItem(legacyConversationKey);
+  }
+}
 
 function displayImageUrl(url: string): string {
   return url.startsWith("data:image/") || url.startsWith("/api/design/image") ? url : `/api/design/download?inline=1&url=${encodeURIComponent(url)}`;
@@ -218,6 +257,7 @@ export default function Home() {
       setConversationId(id);
       setWriteToken(token);
       setReadOnly(!token);
+      if (token) rememberConversation({ id, token });
       const loadedMessages = applyPosterSizeDefault(data.conversation.messages?.length ? data.conversation.messages : [welcome]);
       const latestBrief = [...loadedMessages].reverse().find((message) => message.brief);
       setMessages(loadedMessages);
@@ -238,15 +278,10 @@ export default function Home() {
   useEffect(() => {
     void refreshConversationList();
     const timer = window.setInterval(() => { void refreshConversationList(); }, 3_000);
-    const saved = window.sessionStorage.getItem("zhangwenjie-design-conversation");
-    if (saved) {
-      try {
-        const active = JSON.parse(saved) as ActiveConversation;
-        if (active.id && active.token) void openConversation(active.id, active.token);
-      } catch {
-        window.sessionStorage.removeItem("zhangwenjie-design-conversation");
-      }
-    }
+    const legacyActive = migrateLegacyConversation();
+    const activeId = legacyActive?.id || window.localStorage.getItem(activeConversationKey);
+    const token = legacyActive?.token || (activeId ? ownedConversationToken(activeId) : null);
+    if (activeId && token) void openConversation(activeId, token);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -262,7 +297,7 @@ export default function Home() {
     const data = await response.json().catch(() => ({})) as { conversation?: { id: string }; token?: string; error?: string };
     if (!response.ok || !data.conversation?.id || !data.token) throw new Error(data.error || "无法创建对话。");
     const active = { id: data.conversation.id, token: data.token };
-    window.sessionStorage.setItem("zhangwenjie-design-conversation", JSON.stringify(active));
+    rememberConversation(active);
     setConversationId(active.id);
     setWriteToken(active.token);
     setReadOnly(false);
@@ -529,7 +564,7 @@ export default function Home() {
 
   function resetConversation() {
     if (pending) return;
-    window.sessionStorage.removeItem("zhangwenjie-design-conversation");
+    window.localStorage.removeItem(activeConversationKey);
     setConversationId(null);
     setWriteToken(null);
     setReadOnly(false);
@@ -572,15 +607,7 @@ export default function Home() {
               className={`conversation-item ${conversation.id === conversationId ? "active" : ""}`}
               key={conversation.id}
               onClick={() => {
-                const saved = window.sessionStorage.getItem("zhangwenjie-design-conversation");
-                let token: string | null = null;
-                if (saved) {
-                  try {
-                    const active = JSON.parse(saved) as ActiveConversation;
-                    if (active.id === conversation.id) token = active.token;
-                  } catch { /* Invalid session data should not block read-only viewing. */ }
-                }
-                void openConversation(conversation.id, token);
+                void openConversation(conversation.id, ownedConversationToken(conversation.id));
               }}
             >
               <strong>{conversation.title}</strong>
