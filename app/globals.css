@@ -43,7 +43,7 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .new-chat:hover { background: rgba(255,255,255,.075); color: #fff; }
 .new-chat:disabled { cursor: not-allowed; opacity: .4; }
 .conversation { overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 30px clamp(19px, 3vw, 34px) 24px; background: radial-gradient(ellipse at 50% 0%, rgba(255,128,86,.045), transparent 32%), #171918; }
-.chat-row { display: flex; align-items: flex-start; gap: 11px; max-width: min(83%, 610px); }
+.chat-row { align-self: flex-start; display: flex; align-items: flex-start; gap: 11px; max-width: min(83%, 610px); }
 .chat-row.user { align-self: flex-end; flex-direction: row-reverse; }
 .message-content { min-width: 0; }
 .avatar { flex: 0 0 39px; width: 39px; height: 39px; display: grid; place-items: center; overflow: hidden; border: 1px solid rgba(255, 128, 86, .56); border-radius: 12px; background: #262b29; color: #172018; font-size: 14px; font-weight: 700; }
