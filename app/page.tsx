@@ -6,7 +6,7 @@ type Message = { role: "user" | "assistant"; content: string };
 
 const welcome: Message = {
   role: "assistant",
-  content: "你好，我是张文杰设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。",
+  content: "你好，我是张文杰设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。\n\n你可以跟我说你要做什么，例如：设计一个海报，主标题是xxx，副标题是xxx，下面的文案是xxx，尺寸是：9:16，3d卡通风格。",
 };
 
 export default function Home() {
