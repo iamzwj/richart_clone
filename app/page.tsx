@@ -100,6 +100,19 @@ function formatConversationTime(value: string): string {
   return Number.isNaN(date.getTime()) ? "刚刚" : new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
+function WelcomeMessage() {
+  return <div className="welcome-bubble">
+    <p className="welcome-greeting">你好，我是<strong>张文杰设计助理</strong>。</p>
+    <p className="welcome-intro">你有什么设计需求可以先跟我说，我可以尝试帮你设计。</p>
+    <div className="welcome-example">
+      <span>例如这样描述</span>
+      <p>设计一个海报</p>
+      <p>主标题：xxx　副标题：xxx</p>
+      <p>文案：xxx　尺寸：9:16　风格：3D 卡通</p>
+    </div>
+  </div>;
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [brief, setBrief] = useState<Brief>(emptyBrief);
@@ -467,7 +480,7 @@ export default function Home() {
                 {message.role === "assistant" ? <img src="/zhangwenjie-avatar.png" alt="" /> : "我"}
               </div>
               <div className="message-content">
-                {message.content && <div className="bubble">{message.content}</div>}
+                {message.content && (message === welcome ? <WelcomeMessage /> : <div className="bubble">{message.content}</div>)}
                 {message.brief && <section className="brief-card" aria-label="当前设计需求">
                   <div className="brief-card-title">当前设计需求</div>
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
