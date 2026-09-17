@@ -61,6 +61,12 @@ function downloadImageUrl(url: string): string {
 function isSatisfied(message: string): boolean {
   return /^(ok|好的|可以|满意|就这样|没问题)[！!。.]?$/i.test(message.trim());
 }
+function isDesignIntent(message: string): boolean {
+  return /(海报|设计|方案|图片|图像|改图|修改|调整|换成|生成|主标题|副标题|文案|尺寸|风格|配色|背景|人物|补全|二维码|logo|画面)/i.test(message);
+}
+function isGenerationProgress(message: Message): boolean {
+  return message.role === "assistant" && /(正在根据你的修改方向重新设计|开始为你设计)/.test(message.content);
+}
 function readImage(file: File): Promise<string> {
   if (!file.type.startsWith("image/")) return Promise.reject(new Error("请上传图片文件。"));
   if (file.size > 4 * 1024 * 1024) return Promise.reject(new Error("参考图不能超过 4MB。"));
@@ -342,6 +348,17 @@ export default function Home() {
     return { brief: data.brief, missing: data.missing };
   }
 
+  async function answerGeneralQuestion(message: string): Promise<string> {
+    const response = await fetch("/api/assistant/reply", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message }),
+    });
+    const data = await response.json().catch(() => ({})) as { reply?: string; error?: string };
+    if (!response.ok || !data.reply) throw new Error(data.error || "暂时无法回答，请稍后重试。");
+    return data.reply;
+  }
+
   async function createImages(
     nextBrief: Brief,
     references: string[],
@@ -436,6 +453,13 @@ export default function Home() {
 
       if (mode === "review" && isSatisfied(content)) {
         const reply: Message = { role: "assistant", content: "太好了。如果还需要新的尺寸、文案或风格，直接告诉我修改方向就可以。" };
+        setMessages((current) => [...current, reply]);
+        void saveMessage(active, reply);
+        return;
+      }
+
+      if (!isDesignIntent(content)) {
+        const reply: Message = { role: "assistant", content: await answerGeneralQuestion(content) };
         setMessages((current) => [...current, reply]);
         void saveMessage(active, reply);
         return;
@@ -575,7 +599,7 @@ export default function Home() {
               <div className="message-content">
                 {message.referenceThumbnail && <button type="button" className="message-reference" onClick={() => setPreview({ url: message.referenceThumbnail || "" })} aria-label="预览参考图"><img src={message.referenceThumbnail} alt="用户上传的参考图" /></button>}
                 {message.content && (message === welcome ? <WelcomeMessage /> : <div className="bubble">{message.content}</div>)}
-                {message.brief && <section className="brief-card" aria-label="当前设计需求">
+                {message.brief && !isGenerationProgress(message) && <section className="brief-card" aria-label="当前设计需求">
                   <div className="brief-card-title">当前设计需求</div>
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
                     <div className={`brief-field ${!message.brief?.[field] && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
