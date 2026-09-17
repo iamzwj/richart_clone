@@ -232,6 +232,7 @@ export default function Home() {
   const [draggingReference, setDraggingReference] = useState(false);
   const [activity, setActivity] = useState<"reply" | "design" | null>(null);
   const [focusComposerRequest, setFocusComposerRequest] = useState(0);
+  const [ratioPickerOpen, setRatioPickerOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
@@ -281,6 +282,7 @@ export default function Home() {
       setGeneratedImages([]);
       setMode("review");
       setError("");
+      setRatioPickerOpen(false);
       if (token) setFocusComposerRequest((current) => current + 1);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "无法读取对话记录。");
@@ -368,6 +370,7 @@ export default function Home() {
     setSources(nextSources);
     setMessages((current) => current.map((item, index) => index === messageIndex ? updatedMessage : item));
     setBriefDrafts((current) => ({ ...current, [field]: undefined }));
+    if (field === "size") setRatioPickerOpen(false);
     if (!conversationId || !writeToken) return;
     const storedMessageIndex = messages[0] === welcome ? messageIndex - 1 : messageIndex;
     if (storedMessageIndex < 0) return;
@@ -669,6 +672,7 @@ export default function Home() {
     setEditingValue("");
     setBriefDrafts({});
     setActivity(null);
+    setRatioPickerOpen(false);
     setFocusComposerRequest((current) => current + 1);
   }
 
@@ -737,22 +741,35 @@ export default function Home() {
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
                     <div className={`brief-field ${field === "size" && index === latestBriefIndex && !readOnly ? "ratio-picker" : !message.brief?.[field] && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
                       <span>{fieldLabels[field]}</span>
-                      {field === "size" && index === latestBriefIndex && !readOnly ? <div className="ratio-grid" role="radiogroup" aria-label="选择比例">
-                        {DESIGN_SIZE_OPTIONS.map((option) => {
-                          const selected = (message.brief?.size || DEFAULT_DESIGN_SIZE) === option.value;
-                          return <button
-                            type="button"
-                            className={`ratio-option ${selected ? "selected" : ""}`}
-                            key={option.value}
-                            role="radio"
-                            aria-checked={selected}
-                            disabled={pending}
-                            onClick={() => { void persistBriefField(index, message, field, option.value); }}
-                          >
-                            <i className="ratio-icon" style={{ aspectRatio: option.value.replace(":", " / ") }} aria-hidden="true" />
-                            <b>{option.value}</b>
-                          </button>;
-                        })}
+                      {field === "size" && index === latestBriefIndex && !readOnly ? <div className="ratio-picker-control">
+                        <button
+                          type="button"
+                          className="ratio-trigger"
+                          aria-expanded={ratioPickerOpen}
+                          aria-controls="ratio-options"
+                          onClick={() => setRatioPickerOpen((current) => !current)}
+                          disabled={pending}
+                        >
+                          <span><i className="ratio-icon" style={{ aspectRatio: (message.brief?.size || DEFAULT_DESIGN_SIZE).replace(":", " / ") }} aria-hidden="true" /><b>{message.brief?.size || DEFAULT_DESIGN_SIZE}</b></span>
+                          <svg className={ratioPickerOpen ? "ratio-chevron open" : "ratio-chevron"} viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+                        </button>
+                        {ratioPickerOpen && <div className="ratio-grid" id="ratio-options" role="radiogroup" aria-label="选择比例">
+                          {DESIGN_SIZE_OPTIONS.map((option) => {
+                            const selected = (message.brief?.size || DEFAULT_DESIGN_SIZE) === option.value;
+                            return <button
+                              type="button"
+                              className={`ratio-option ${selected ? "selected" : ""}`}
+                              key={option.value}
+                              role="radio"
+                              aria-checked={selected}
+                              disabled={pending}
+                              onClick={() => { void persistBriefField(index, message, field, option.value); }}
+                            >
+                              <i className="ratio-icon" style={{ aspectRatio: option.value.replace(":", " / ") }} aria-hidden="true" />
+                              <b>{option.value}</b>
+                            </button>;
+                          })}
+                        </div>}
                       </div> : editingField === field && index === latestBriefIndex ? <input
                         autoFocus
                         value={editingValue}

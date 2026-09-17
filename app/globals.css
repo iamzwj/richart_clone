@@ -72,7 +72,16 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .brief-field input, .brief-field select { min-width: 0; width: 100%; padding: 4px 6px; border: 1px solid rgba(255,128,86,.64); border-radius: 6px; outline: 0; color: #fff; background: #2c302e; font: inherit; }
 .ratio-picker { display: block; padding: 13px 14px 14px; }
 .ratio-picker > span { display: block; margin-bottom: 10px; color: #bbb8c3; font-size: 13px; font-weight: 600; }
-.ratio-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
+.ratio-picker-control { min-width: 0; }
+.ratio-trigger { width: 100%; min-height: 46px; display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border: 1px solid rgba(239,236,226,.16); border-radius: 10px; background: rgba(255,255,255,.045); color: #d0ccd6; cursor: pointer; }
+.ratio-trigger:hover:not(:disabled) { border-color: rgba(153,112,255,.65); background: rgba(126,86,218,.1); }
+.ratio-trigger:disabled { cursor: wait; opacity: .6; }
+.ratio-trigger > span { display: inline-flex; align-items: center; gap: 10px; }
+.ratio-trigger .ratio-icon { height: 23px; max-width: 36px; border-width: 2px; }
+.ratio-trigger b { color: inherit; font-size: 13px; font-weight: 650; }
+.ratio-chevron { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; transition: transform .16s ease; }
+.ratio-chevron.open { transform: rotate(180deg); }
+.ratio-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; margin-top: 10px; }
 .ratio-option { min-height: 82px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 8px 4px; border: 1px solid rgba(239,236,226,.12); border-radius: 12px; background: rgba(255,255,255,.045); color: #ccc8d3; cursor: pointer; transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease; }
 .ratio-option:hover:not(:disabled) { border-color: rgba(153,112,255,.65); background: rgba(126,86,218,.13); transform: translateY(-1px); }
 .ratio-option.selected { border-color: #8e64ff; background: rgba(107,72,198,.24); box-shadow: inset 0 0 0 1px rgba(166,136,255,.24); color: #a987ff; }
