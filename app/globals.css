@@ -36,6 +36,11 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .header-spacer { width: 34px; height: 34px; justify-self: end; }
 .contact { min-width: 0; text-align: center; }
 .contact h1 { margin: 0; overflow: hidden; color: #f5f2ec; font-size: 16px; font-weight: 630; letter-spacing: .015em; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.status-ellipsis { display: inline-flex; align-items: baseline; width: 1.05em; overflow: hidden; color: #ffad91; }
+.status-ellipsis i { display: inline-block; width: .35em; font-style: normal; opacity: .18; animation: status-dot 1.05s infinite ease-in-out; }
+.status-ellipsis i:nth-child(2) { animation-delay: .16s; }
+.status-ellipsis i:nth-child(3) { animation-delay: .32s; }
+@keyframes status-dot { 0%, 65%, 100% { opacity: .18; transform: translateY(0); } 32% { opacity: 1; transform: translateY(-.08em); } }
 .new-chat { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; justify-self: end; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #b7b9b4; cursor: pointer; font-size: 23px; font-weight: 300; line-height: 1; transition: color .18s ease, background .18s ease; }
 .new-chat:hover { background: rgba(255,255,255,.075); color: #fff; }
 .new-chat:disabled { cursor: not-allowed; opacity: .4; }

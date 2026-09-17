@@ -168,6 +168,7 @@ export default function Home() {
   const [editingValue, setEditingValue] = useState("");
   const [briefDrafts, setBriefDrafts] = useState<Partial<Brief>>({});
   const [draggingReference, setDraggingReference] = useState(false);
+  const [activity, setActivity] = useState<"reply" | "design" | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const name = process.env.NEXT_PUBLIC_CLONE_NAME || "张文杰";
@@ -356,6 +357,7 @@ export default function Home() {
     directReferences?: string[],
   ) {
     setPending(true);
+    setActivity("design");
     setError("");
     const progressMessage: Message = {
       role: "assistant",
@@ -392,6 +394,7 @@ export default function Home() {
       setError(generationError instanceof Error ? generationError.message : "生图失败，请稍后重试。");
     } finally {
       setPending(false);
+      setActivity(null);
     }
   }
 
@@ -401,6 +404,7 @@ export default function Home() {
     if (!content || pending || readOnly) return;
 
     setPending(true);
+    setActivity("reply");
     try {
       const active = await ensureConversation();
       const selectedReference = reference;
@@ -462,6 +466,7 @@ export default function Home() {
       setError(requestError instanceof Error ? requestError.message : "暂时无法读取需求，请稍后重试。");
     } finally {
       setPending(false);
+      setActivity(null);
     }
   }
 
@@ -495,6 +500,7 @@ export default function Home() {
     setEditingField(null);
     setEditingValue("");
     setBriefDrafts({});
+    setActivity(null);
   }
 
   const latestBriefIndex = messages.reduce((latest, message, index) => message.brief ? index : latest, -1);
@@ -543,7 +549,7 @@ export default function Home() {
         <header className="chat-header">
           <div className="header-identity" aria-hidden="true"><img src="/zhangwenjie-avatar.png" alt="" /></div>
           <div className="contact">
-            <h1 aria-live="polite">{pending ? "对方正在输入…" : assistantName}</h1>
+            <h1 aria-live="polite">{pending ? <><span>{activity === "design" ? "对方正在帮你设计" : "对方正在输入"}</span><span className="status-ellipsis" aria-hidden="true"><i>·</i><i>·</i><i>·</i></span></> : assistantName}</h1>
           </div>
           <div className="header-spacer" aria-hidden="true" />
         </header>
