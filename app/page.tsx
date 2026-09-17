@@ -543,7 +543,7 @@ export default function Home() {
         <header className="chat-header">
           <div className="header-identity" aria-hidden="true"><img src="/zhangwenjie-avatar.png" alt="" /></div>
           <div className="contact">
-            <h1 aria-live="polite">{loadingConversation ? "正在打开对话…" : pending ? "对方正在输入…" : assistantName}</h1>
+            <h1 aria-live="polite">{pending ? "对方正在输入…" : assistantName}</h1>
           </div>
           <div className="header-spacer" aria-hidden="true" />
         </header>
@@ -584,9 +584,6 @@ export default function Home() {
                           {stylePresets.map((preset) => <button type="button" key={preset} onMouseDown={(event) => event.preventDefault()} onClick={() => { void persistBriefField(index, message, field, preset); }}>{preset}</button>)}
                         </div>}
                       </div> : <b>{message.brief?.[field] || "待确认"}</b>}
-                      {message.brief?.[field] && editingField !== field && <em className={message.sources?.[field] === "ai" ? "ai" : "user"}>
-                        {message.sources?.[field] === "ai" ? "AI 推荐" : "用户提供"}
-                      </em>}
                       {index === latestBriefIndex && !readOnly && !pending && message.brief?.[field] && (editingField === field ? <button className="brief-edit confirm" type="button" onClick={() => { void commitBriefEdit(index, message); }} aria-label={`保存${fieldLabels[field]}`}>✓</button> : <button className="brief-edit" type="button" onClick={() => { setEditingField(field); setEditingValue(message.brief?.[field] || ""); }} aria-label={`编辑${fieldLabels[field]}`} title={`编辑${fieldLabels[field]}`}>
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.8V20h3.2L18.5 8.7l-3.2-3.2L4 16.8Zm13.8-12.3 1.7-1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1l-1.7 1.7-3-3Z" /></svg>
                       </button>)}

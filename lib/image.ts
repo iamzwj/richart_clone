@@ -8,6 +8,18 @@ const MODEL = "gpt-image-2.5-sunburst";
 const QUALITY = "high";
 const IMAGE_SIZE = "2K";
 const MAX_REFERENCE_LENGTH = 6_000_000;
+const SIZE_BY_RATIO: Record<string, string> = {
+  "1:1": "1024x1024",
+  "9:16": "1024x1792",
+  "3:4": "1024x1365",
+  "4:3": "1365x1024",
+  "16:9": "1792x1024",
+};
+
+function modelPixelSize(size: string): string | undefined {
+  const normalised = size.toLowerCase().replace(/[：]/g, ":").replace(/[×*]/g, "x").replace(/\s/g, "");
+  return SIZE_BY_RATIO[normalised] || (/^\d{3,4}x\d{3,4}$/.test(normalised) ? normalised : undefined);
+}
 
 function apiBaseUrl(): string {
   return (process.env.GRSAI_BASE_URL || "https://grsaiapi.com").replace(/\/$/, "");
@@ -144,7 +156,7 @@ async function createOne(brief: DesignBrief, references: string[], constraints: 
     body: JSON.stringify({
       model: MODEL,
       prompt: createPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
-      size: brief.size || undefined,
+      size: modelPixelSize(brief.size),
       imageSize: IMAGE_SIZE,
       quality: QUALITY,
       variants: 1,
