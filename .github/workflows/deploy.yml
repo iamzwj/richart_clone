@@ -129,6 +129,7 @@ jobs:
           sudo rm -f "$runtime_env"
 
           sudo ln -sfn "$release_dir" "$app_dir/current"
+          sudo systemctl kill --kill-whom=all richart-clone || true
           sudo systemctl restart richart-clone
           sudo systemctl is-active --quiet richart-clone
           EOF
