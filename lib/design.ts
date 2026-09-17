@@ -24,6 +24,8 @@ export const fieldLabels: Record<keyof DesignBrief, string> = {
   style: "风格",
 };
 
+const requiredFields: (keyof DesignBrief)[] = ["title", "size", "style"];
+
 function getClient(): OpenAI {
   const apiKey = process.env.GRSAI_API_KEY;
   if (!apiKey) throw new Error("GRSAI_API_KEY is not configured.");
@@ -70,7 +72,7 @@ export function normaliseBrief(value: Partial<DesignBrief>): DesignBrief {
 }
 
 export function missingFields(brief: DesignBrief): (keyof DesignBrief)[] {
-  return (Object.keys(fieldLabels) as (keyof DesignBrief)[]).filter((field) => !brief[field]);
+  return requiredFields.filter((field) => !brief[field]);
 }
 
 export async function extractDesignBrief(

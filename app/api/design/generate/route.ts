@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { normaliseBrief } from "@/lib/design";
+import { missingFields, normaliseBrief } from "@/lib/design";
 import { generateDesignImages, isAllowedImageUrl, readGeneratedImage } from "@/lib/image";
 import { isRateLimited } from "@/lib/rate-limit";
 
@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
     const references = (await Promise.all(rawReferences.map(normaliseReference))).filter((item): item is string => Boolean(item));
     const modification = typeof body.modification === "string" ? body.modification.trim().slice(0, 2_000) : undefined;
     const isReferenceEdit = references.length > 0 && Boolean(modification);
-    if (!isReferenceEdit && Object.values(brief).some((value) => !value)) {
-      return NextResponse.json({ error: "请先补全主标题、副标题、文案、尺寸和风格。" }, { status: 400 });
+    if (!isReferenceEdit && missingFields(brief).length) {
+      return NextResponse.json({ error: "请先补全主标题、尺寸和风格。副标题和文案可留空。" }, { status: 400 });
     }
     const constraints = Array.isArray(body.constraints)
       ? body.constraints.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, 200)).filter(Boolean).slice(0, 12)

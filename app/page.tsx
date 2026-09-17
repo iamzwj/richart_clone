@@ -32,11 +32,16 @@ const welcome: Message = {
 };
 const fieldLabels: Record<keyof Brief, string> = {
   title: "主标题",
-  subtitle: "副标题",
-  copy: "文案",
+  subtitle: "副标题（可选）",
+  copy: "文案（可选）",
   size: "尺寸",
   style: "风格",
 };
+const requiredBriefFields: (keyof Brief)[] = ["title", "size", "style"];
+
+function missingRequiredBriefFields(brief: Brief): (keyof Brief)[] {
+  return requiredBriefFields.filter((field) => !brief[field]);
+}
 const fieldPlaceholders: Record<keyof Brief, string> = {
   title: "例如：有问题找助理",
   subtitle: "例如：24 小时在线响应",
@@ -362,7 +367,7 @@ export default function Home() {
   }
 
   async function generateFromBriefCard(message: Message) {
-    const missing = (Object.keys(fieldLabels) as (keyof Brief)[]).filter((field) => !brief[field]);
+    const missing = missingRequiredBriefFields(brief);
     if (missing.length) {
       setError("请先填写所有必要信息。");
       return;
@@ -518,7 +523,7 @@ export default function Home() {
         if (recommended.fields.includes(field)) nextSources[field] = "ai";
         else if (nextBrief[field] && nextBrief[field] !== brief[field]) nextSources[field] = "user";
       });
-      const missing = (Object.keys(fieldLabels) as (keyof Brief)[]).filter((field) => !nextBrief[field]);
+      const missing = missingRequiredBriefFields(nextBrief);
       setBrief(nextBrief);
       setSources(nextSources);
       setConstraints(nextConstraints);
@@ -668,7 +673,7 @@ export default function Home() {
                     </div>
                   ))}
                   {message.constraints?.length ? <div className="brief-constraints">约束：{message.constraints.join(" · ")}</div> : null}
-                  {index === latestBriefIndex && !readOnly && <div className="brief-card-footer"><button type="button" disabled={(Object.keys(fieldLabels) as (keyof Brief)[]).some((field) => !brief[field]) || pending} onClick={() => { void generateFromBriefCard(message); }}>生成方案</button></div>}
+                  {index === latestBriefIndex && !readOnly && <div className="brief-card-footer"><button type="button" disabled={missingRequiredBriefFields(brief).length > 0 || pending} onClick={() => { void generateFromBriefCard(message); }}>生成方案</button></div>}
                 </section>}
                 {message.images?.length ? (
                   <div className="image-gallery">
