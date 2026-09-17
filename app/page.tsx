@@ -110,13 +110,15 @@ export default function Home() {
         <div className="conversation" role="log" aria-label="对话记录" aria-live="polite">
           {messages.map((message, index) => message.content && (
             <article className={`chat-row ${message.role}`} key={`${message.role}-${index}`}>
-              <div className="avatar" aria-hidden="true">{message.role === "assistant" ? "张" : "我"}</div>
+              <div className="avatar" aria-hidden="true">
+                {message.role === "assistant" ? <img src="/zhangwenjie-avatar.png" alt="" /> : "我"}
+              </div>
               <div className="bubble">{message.content}</div>
             </article>
           ))}
           {pending && !isReplyStarted && (
             <article className="chat-row assistant" aria-label="对方正在输入">
-              <div className="avatar" aria-hidden="true">张</div>
+              <div className="avatar" aria-hidden="true"><img src="/zhangwenjie-avatar.png" alt="" /></div>
               <div className="bubble typing"><i /><i /><i /></div>
             </article>
           )}
