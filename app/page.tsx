@@ -713,7 +713,6 @@ export default function Home() {
             </button>
           ))}
         </div>
-        <p className="sidebar-note">打开其他人的对话后仅可查看，不能发送或修改。</p>
       </aside>
       <section className="wechat-window" aria-label={`与${assistantName}对话`}>
         <header className="chat-header">

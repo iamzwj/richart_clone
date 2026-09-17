@@ -26,7 +26,6 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .conversation-item.active::before { background: var(--ember); box-shadow: 0 0 12px rgba(255,128,86,.58); }
 .conversation-item strong { overflow: hidden; color: #e8e7e1; font-size: 13px; font-weight: 570; letter-spacing: .01em; text-overflow: ellipsis; white-space: nowrap; }
 .empty-list { margin: 20px 12px; color: var(--faint); font-size: 13px; line-height: 1.7; }
-.sidebar-note { margin: 0; padding: 17px 20px 19px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; line-height: 1.55; }
 .wechat-window { width: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; border-radius: 22px; background: var(--panel); }
 .chat-header { min-height: 72px; display: grid; grid-template-columns: 42px 1fr 42px; align-items: center; padding: 13px 20px; border-bottom: 1px solid var(--line); background: rgba(28, 31, 30, .74); }
 .header-identity { width: 34px; height: 34px; overflow: hidden; border: 1px solid rgba(255,128,86,.6); border-radius: 11px; }
