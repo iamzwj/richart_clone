@@ -6,18 +6,24 @@ type Message = { role: "user" | "assistant"; content: string };
 
 const welcome: Message = {
   role: "assistant",
-  content: "你好，我是阿Jay的数字分身。你可以问我关于 AI 自动化、设计、网站或产品开发的事。",
+  content: "你好，我是张文杰设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。",
 };
 
-const starters = ["你最近在做什么？", "聊聊 AI 自动化", "怎样开始一个网站项目？"];
+const starters = [
+  { title: "梳理设计需求", label: "从模糊想法，到清晰 brief", prompt: "请帮我梳理一个设计需求。先问我最关键的三个问题，了解目标、受众和交付物，再整理成设计 brief。" },
+  { title: "评审设计方案", label: "找到问题，给出修改优先级", prompt: "我想评审一个设计方案。我会用文字描述方案，请先引导我补充设计目标、使用场景和现有方案，再从信息层级、视觉一致性和可用性给出建议。" },
+  { title: "探索视觉方向", label: "概念、配色、字体与构图", prompt: "请帮我探索三个有差异的视觉方向。先了解项目和受众，再给出每个方向的概念、配色、字体气质、构图建议和适用场景。" },
+  { title: "编写 AI 创作提示词", label: "让视觉想法变得可描述", prompt: "请帮我写一组 AI 图像创作提示词。先问我主体、用途、画幅和期望风格，再输出可复制的提示词与迭代建议。" },
+];
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [input, setInput] = useState("");
+  const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  const name = process.env.NEXT_PUBLIC_CLONE_NAME || "Richart J";
-  const tagline = process.env.NEXT_PUBLIC_CLONE_TAGLINE || "视觉设计师 · AI 自动化 · 数字产品";
+  const name = process.env.NEXT_PUBLIC_CLONE_NAME || "张文杰";
+  const tagline = process.env.NEXT_PUBLIC_CLONE_TAGLINE || "视觉设计 · AI 设计 · 海报与详情页";
 
   useEffect(() => {
     const report = (message: string) => {
@@ -70,6 +76,7 @@ export default function Home() {
     setMessages(nextMessages);
     setInput("");
     setPending(true);
+    setError("");
 
     try {
       const response = await fetch("/api/chat", {
@@ -108,8 +115,10 @@ export default function Home() {
 
         if (done) break;
       }
-    } catch {
-      setMessages((current) => [...current, { role: "assistant", content: "网络连接出了点问题，请稍后再试。" }]);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "暂时无法连接，请稍后重试。");
+      setInput(content);
+      setMessages((current) => current.filter((message) => message.content.trim()));
     } finally {
       setPending(false);
     }
@@ -118,24 +127,24 @@ export default function Home() {
   return (
     <main className="shell">
       <section className="intro">
-        <div className="eyebrow">DIGITAL COUNTERPART</div>
+        <div className="eyebrow">DESIGN COUNTERPART</div>
         <h1>{name}<span>.</span></h1>
         <p>{tagline}</p>
         <div className="portrait" aria-hidden="true"><i /></div>
-        <small>不是本人，但会基于公开设定诚实回答。</small>
+        <div className="intro-description">把我的设计思考，<br />变成随时在场的灵感搭档。</div><div className="expertise"><span>视觉设计</span><span>AI 创作</span><span>AI 工具</span></div><small>AI 分身 · 基于个人资料回答，不代表本人承诺</small>
       </section>
-      <section className="chat" aria-label="与数字分身对话">
-        <header><div className="status"><b /> 在线</div><p>和 {name} 聊聊</p></header>
-        <div className="messages">
+      <section className="chat" aria-label="与张文杰设计助理对话">
+        <header><div className="status"><b /> 设计工作台</div><button className="reset" disabled={pending} onClick={() => { setMessages([welcome]); setError(""); setInput(""); }}>新对话 ＋</button></header>
+        <div className="messages" role="log" aria-label="对话记录" aria-live="polite">
           {messages.map((message, index) => <div className={`message ${message.role}`} key={`${message.role}-${index}`}>{message.content}</div>)}
           {pending && <div className="message assistant typing"><i /><i /><i /></div>}
           <div ref={endRef} />
         </div>
-        {messages.length === 1 && <div className="starters">{starters.map((starter) => <button key={starter} onClick={() => send(undefined, starter)}>{starter}</button>)}</div>}
-        <form onSubmit={send} className="composer">
-          <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } }} placeholder="输入你的问题…" rows={1} maxLength={2000} disabled={pending} />
+        {messages.length === 1 && <div className="starters">{starters.map((starter) => <button key={starter.title} onClick={() => { setInput(starter.prompt); }}><strong>{starter.title}<span>↗</span></strong><small>{starter.label}</small></button>)}</div>}
+        <div className="composer-area">{error && <p className="error" role="alert">{error}</p>}<form onSubmit={send} className="composer">
+          <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} aria-label="设计问题" placeholder="描述你的项目，或从一个设计问题开始…" rows={1} maxLength={2000} disabled={pending} />
           <button type="submit" disabled={pending || !input.trim()} aria-label="发送消息">↑</button>
-        </form>
+        </form><p className="composer-note">Enter 发送 · Shift + Enter 换行 · 当前支持文字对话</p></div>
       </section>
     </main>
   );

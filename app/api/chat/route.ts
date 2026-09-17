@@ -13,6 +13,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "请求过于频繁，请稍后再试。" }, { status: 429 });
   }
 
+  if (!process.env.GRSAI_API_KEY) {
+    return NextResponse.json({ error: "设计分身尚未连接模型。请在服务器 .env.local 中配置 GRSAI_API_KEY 后重启服务。" }, { status: 503 });
+  }
+
   try {
     const body = (await request.json()) as { messages?: unknown };
     if (!Array.isArray(body.messages)) {

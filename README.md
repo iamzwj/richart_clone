@@ -1,11 +1,11 @@
-# Richart Clone
+# 张文杰设计助理
 
 一个可公开访问、也可接入企业微信的数字分身。网页与企业微信复用相同的人设资料和模型调用层。
 
 ## 已包含
 
 - 适合直接分享的移动端网页聊天入口
-- 服务端通过 GRSai 的 OpenAI-compatible Chat Completions API 调用 GPT-6；浏览器永远拿不到 API Key
+- 服务端通过 GRSai 的 OpenAI-compatible Chat Completions API 调用可配置的模型；浏览器永远拿不到 API Key
 - `content/profile.md` 作为可编辑的人设/知识起点
 - 企业微信 URL 验证、明文消息和加密消息回调（`/api/wecom`）
 - 基础 IP 限流与输入长度限制，避免公开链接被简单刷爆
@@ -87,3 +87,9 @@ npm run dev
 npm run typecheck
 npm run build
 ```
+
+## 设计顾问版本
+
+首页提供需求梳理、方案评审、视觉方向和 AI 提示词四个入口，点击后可编辑问题再发送。支持新对话、中文输入法和清晰的模型配置错误提示。
+
+设计方向已补充在 `content/profile.md`，重点为视觉设计、AI 设计、海报、详情页及 AI 工具。现有姓名与经历沿用原仓库，发布前请核实；修改资料后重启服务。当前只支持文字描述，尚不支持上传图片或直接生成图片。
