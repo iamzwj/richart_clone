@@ -21,6 +21,47 @@ const SIZE_BY_RATIO: Record<string, string> = {
   "16:9": "1792x1024",
 };
 
+function imageDimensions(image: Buffer, contentType: string): { width: number; height: number } | null {
+  if (contentType.includes("png") && image.length >= 24) {
+    return { width: image.readUInt32BE(16), height: image.readUInt32BE(20) };
+  }
+
+  if (contentType.includes("jpeg")) {
+    for (let index = 2; index + 9 < image.length;) {
+      if (image[index] !== 0xff) { index += 1; continue; }
+      const marker = image[index + 1];
+      if (marker === 0xd8 || marker === 0xd9) { index += 2; continue; }
+      const length = image.readUInt16BE(index + 2);
+      if (length < 2 || index + length + 2 > image.length) break;
+      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+        return { width: image.readUInt16BE(index + 7), height: image.readUInt16BE(index + 5) };
+      }
+      index += length + 2;
+    }
+  }
+
+  if (contentType.includes("webp") && image.length >= 30 && image.toString("ascii", 0, 4) === "RIFF") {
+    const chunk = image.toString("ascii", 12, 16);
+    if (chunk === "VP8X" && image.length >= 30) {
+      return { width: image.readUIntLE(24, 3) + 1, height: image.readUIntLE(27, 3) + 1 };
+    }
+    if (chunk === "VP8 " && image.length >= 30) {
+      return { width: image.readUInt16LE(26) & 0x3fff, height: image.readUInt16LE(28) & 0x3fff };
+    }
+    if (chunk === "VP8L" && image.length >= 25) {
+      const bits = image.readUInt32LE(21);
+      return { width: 1 + (bits & 0x3fff), height: 1 + ((bits >> 14) & 0x3fff) };
+    }
+  }
+
+  return null;
+}
+
+function filenameStem(prompt: string): string {
+  const prefix = Array.from(prompt.replace(/\s/g, "").replace(/[\\/:*?\"<>|]/g, "")).slice(0, 8).join("");
+  return prefix || "设计方案";
+}
+
 function modelPixelSize(size: string): string | undefined {
   const normalised = size.toLowerCase().replace(/[：]/g, ":").replace(/[×*]/g, "x").replace(/\s/g, "");
   return SIZE_BY_RATIO[normalised] || (/^\d{3,4}x\d{3,4}$/.test(normalised) ? normalised : undefined);
@@ -181,11 +222,13 @@ export async function generateDesignImages(
   constraints: string[],
   modification?: string,
   count = 2,
+  filenamePrompt?: string,
 ): Promise<GeneratedImage[]> {
   const batches = await Promise.all(Array.from({ length: count }, () => createOne(brief, references, constraints, modification)));
   const urls = batches.flat().filter(Boolean).slice(0, count);
   if (!urls.length) throw new Error("生图服务没有返回图片，请稍后重试。");
-  return Promise.all(urls.map(async (url) => ({ url: await saveGeneratedImage(url) })));
+  const namingPrompt = filenamePrompt || modification || brief.title || brief.copy || "设计方案";
+  return Promise.all(urls.map(async (url) => ({ url: await saveGeneratedImage(url, namingPrompt) })));
 }
 
 function extensionFor(contentType: string): { extension: "png" | "jpg" | "webp"; contentType: string } | null {
@@ -195,26 +238,34 @@ function extensionFor(contentType: string): { extension: "png" | "jpg" | "webp";
   return null;
 }
 
-async function saveGeneratedImage(source: string): Promise<string> {
+async function saveGeneratedImage(source: string, prompt: string): Promise<string> {
   const response = await fetch(source, { cache: "no-store" });
   if (!response.ok) throw new Error("生成图片暂时无法保存，请重新生成。");
   const metadata = extensionFor(response.headers.get("content-type") || "");
   if (!metadata) throw new Error("生成图片格式不受支持。");
   const image = Buffer.from(await response.arrayBuffer());
   if (!image.length || image.length > MAX_SAVED_IMAGE_BYTES) throw new Error("生成图片文件异常，请重新生成。");
+  const dimensions = imageDimensions(image, metadata.contentType);
   const id = `${randomUUID()}.${metadata.extension}`;
+  const filename = `${filenameStem(prompt)}_${dimensions ? `${dimensions.width}x${dimensions.height}` : "未知分辨率"}.${metadata.extension}`;
   await mkdir(generatedImageDir, { recursive: true });
   await writeFile(join(generatedImageDir, id), image, { mode: 0o600 });
+  await writeFile(join(generatedImageDir, `${id}.json`), JSON.stringify({ filename }), { mode: 0o600 });
   return `/api/design/image?id=${id}`;
 }
 
-export async function readGeneratedImage(id: string): Promise<{ data: Buffer; contentType: string } | null> {
+export async function readGeneratedImage(id: string): Promise<{ data: Buffer; contentType: string; filename: string } | null> {
   const match = id.match(/^([0-9a-f-]{36})\.(png|jpg|webp)$/i);
   if (!match) return null;
   try {
     const extension = match[2].toLowerCase();
     const contentType = extension === "jpg" ? "image/jpeg" : `image/${extension}`;
-    return { data: await readFile(join(generatedImageDir, id)), contentType };
+    const defaultFilename = `设计方案_未知分辨率.${extension}`;
+    const metadata: { filename?: unknown } = await readFile(join(generatedImageDir, `${id}.json`), "utf8")
+      .then((value) => JSON.parse(value) as { filename?: unknown })
+      .catch(() => ({}));
+    const filename = typeof metadata.filename === "string" ? metadata.filename : defaultFilename;
+    return { data: await readFile(join(generatedImageDir, id)), contentType, filename };
   } catch {
     return null;
   }

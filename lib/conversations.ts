@@ -53,7 +53,7 @@ function cleanMessage(value: unknown): ConversationMessage | null {
   const images = Array.isArray(source.images)
     ? source.images.flatMap((image) => {
       const url = image && typeof image === "object" ? cleanText((image as Record<string, unknown>).url, 2_000) : "";
-      return /^https:\/\//.test(url) ? [{ url }] : [];
+      return (/^https:\/\//.test(url) || /^\/api\/design\/image\?id=[0-9a-f-]{36}\.(?:png|jpg|webp)$/i.test(url)) ? [{ url }] : [];
     }).slice(0, 2)
     : undefined;
   const referenceThumbnail = typeof source.referenceThumbnail === "string" && /^data:image\/(?:png|jpeg|webp);base64,/.test(source.referenceThumbnail) && source.referenceThumbnail.length <= 100_000

@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       constraints?: unknown;
       modification?: unknown;
       count?: unknown;
+      filenamePrompt?: unknown;
     };
     const brief = normaliseBrief(
       body.brief && typeof body.brief === "object" ? body.brief as Record<string, unknown> : {},
@@ -52,7 +53,8 @@ export async function POST(request: NextRequest) {
       ? body.constraints.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, 200)).filter(Boolean).slice(0, 12)
       : [];
     const count = body.count === 1 ? 1 : 2;
-    const images = await generateDesignImages(brief, references, constraints, modification, count);
+    const filenamePrompt = typeof body.filenamePrompt === "string" ? body.filenamePrompt.trim().slice(0, 2_000) : undefined;
+    const images = await generateDesignImages(brief, references, constraints, modification, count, filenamePrompt);
     return NextResponse.json({ images });
   } catch (error) {
     const message = error instanceof Error ? error.message : "生图失败，请稍后重试。";

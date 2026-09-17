@@ -189,6 +189,7 @@ export default function Home() {
   const [activity, setActivity] = useState<"reply" | "design" | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const name = process.env.NEXT_PUBLIC_CLONE_NAME || "张文杰";
   const assistantName = `${name}的设计助理`;
 
@@ -270,15 +271,21 @@ export default function Home() {
   }
 
   async function saveMessage(active: ActiveConversation, message: Message) {
-    await fetch(`/api/conversations/${active.id}`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-conversation-token": active.token },
-      body: JSON.stringify({ message }),
-    }).catch(() => undefined);
-    void refreshConversationList();
+    const job = saveQueueRef.current.then(async () => {
+      const response = await fetch(`/api/conversations/${active.id}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-conversation-token": active.token },
+        body: JSON.stringify({ message }),
+      });
+      if (!response.ok) throw new Error("对话保存失败，请重试。");
+      void refreshConversationList();
+    });
+    saveQueueRef.current = job.catch(() => undefined);
+    return job;
   }
 
   async function saveUpdatedMessage(active: ActiveConversation, messageIndex: number, message: Message) {
+    await saveQueueRef.current;
     const response = await fetch(`/api/conversations/${active.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json", "x-conversation-token": active.token },
@@ -303,8 +310,10 @@ export default function Home() {
     setMessages((current) => current.map((item, index) => index === messageIndex ? updatedMessage : item));
     setBriefDrafts((current) => ({ ...current, [field]: undefined }));
     if (!conversationId || !writeToken) return;
+    const storedMessageIndex = messages[0] === welcome ? messageIndex - 1 : messageIndex;
+    if (storedMessageIndex < 0) return;
     try {
-      await saveUpdatedMessage({ id: conversationId, token: writeToken }, messageIndex, updatedMessage);
+      await saveUpdatedMessage({ id: conversationId, token: writeToken }, storedMessageIndex, updatedMessage);
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "需求卡片保存失败，请重试。");
     }
@@ -325,7 +334,7 @@ export default function Home() {
     }
     try {
       const active = await ensureConversation();
-      await generate(brief, active, undefined, { brief, sources, constraints: message.constraints || constraints });
+      await generate(brief, active, undefined, { brief, sources, constraints: message.constraints || constraints }, undefined, brief.title);
     } catch (generationError) {
       setError(generationError instanceof Error ? generationError.message : "暂时无法开始设计，请稍后重试。");
     }
@@ -365,11 +374,12 @@ export default function Home() {
     modification?: string,
     count = 2,
     activeConstraints = constraints,
+    filenamePrompt?: string,
   ): Promise<GeneratedImage[]> {
     const response = await fetch("/api/design/generate", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ brief: nextBrief, references, modification, constraints: activeConstraints, count }),
+      body: JSON.stringify({ brief: nextBrief, references, modification, constraints: activeConstraints, count, filenamePrompt }),
     });
     const data = await response.json().catch(() => ({})) as { images?: GeneratedImage[]; error?: string };
     if (!response.ok || !data.images?.length) {
@@ -384,6 +394,7 @@ export default function Home() {
     modification?: string,
     snapshot?: Pick<Message, "brief" | "sources" | "constraints">,
     directReferences?: string[],
+    filenamePrompt?: string,
   ) {
     setPending(true);
     setActivity("design");
@@ -403,8 +414,8 @@ export default function Home() {
         : generatedImages.map((image) => image.url).slice(0, 2));
 
       const images = modification && sources.length > 1
-        ? (await Promise.all(sources.map((source) => createImages(nextBrief, [source], modification, 1, activeConstraints)))).flat()
-        : await createImages(nextBrief, sources, modification, 2, activeConstraints);
+        ? (await Promise.all(sources.map((source) => createImages(nextBrief, [source], modification, 1, activeConstraints, filenamePrompt)))).flat()
+        : await createImages(nextBrief, sources, modification, 2, activeConstraints, filenamePrompt);
 
       const result = images.slice(0, 2);
       setGeneratedImages(result);
@@ -445,7 +456,7 @@ export default function Home() {
       if (selectedReference) {
         const editBrief = { ...emptyBrief, size: explicitSize(content) };
         setPending(false);
-        await generate(editBrief, active, content, undefined, [selectedReference.dataUrl]);
+        await generate(editBrief, active, content, undefined, [selectedReference.dataUrl], content);
         return;
       }
 
@@ -495,7 +506,7 @@ export default function Home() {
         brief: nextBrief,
         sources: nextSources,
         constraints: nextConstraints,
-      } : undefined);
+      } : undefined, undefined, content);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "暂时无法读取需求，请稍后重试。");
     } finally {

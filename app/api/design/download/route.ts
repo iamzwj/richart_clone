@@ -3,14 +3,18 @@ import { isAllowedImageUrl, readGeneratedImage } from "@/lib/image";
 
 export const runtime = "nodejs";
 
+function attachmentDisposition(filename: string): string {
+  const fallback = filename.replace(/[^\x20-\x7e]/g, "_").replace(/[\\"]/g, "_");
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`;
+}
+
 export async function GET(request: NextRequest) {
   const savedId = request.nextUrl.searchParams.get("id");
   if (savedId) {
     const image = await readGeneratedImage(savedId);
     if (!image) return NextResponse.json({ error: "图片不存在或已失效。" }, { status: 404 });
-    const extension = image.contentType.includes("webp") ? "webp" : image.contentType.includes("jpeg") ? "jpg" : "png";
     return new NextResponse(new Uint8Array(image.data).buffer, {
-      headers: { "content-type": image.contentType, "content-disposition": `attachment; filename="zhangwenjie-design.${extension}"`, "cache-control": "private, no-store" },
+      headers: { "content-type": image.contentType, "content-disposition": attachmentDisposition(image.filename), "cache-control": "private, no-store" },
     });
   }
   const source = request.nextUrl.searchParams.get("url");
