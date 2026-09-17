@@ -54,7 +54,7 @@ const fieldPlaceholders: Record<keyof Brief, string> = {
   size: "选择尺寸",
   style: "输入或选择一种风格",
 };
-const stylePresets = ["3D 卡通", "写实风", "极简平面", "国潮插画", "轻奢质感", "赛博朋克"];
+const stylePresets = ["3D 卡通", "写实风", "极简平面", "国潮插画", "轻奢质感"];
 const activeConversationKey = "zhangwenjie-design-active-conversation";
 const ownedConversationKey = "zhangwenjie-design-owned-conversations";
 const legacyConversationKey = "zhangwenjie-design-conversation";
@@ -706,16 +706,25 @@ export default function Home() {
                 {message.brief && !isGenerationProgress(message) && <section className="brief-card" aria-label="当前设计需求">
                   <div className="brief-card-title">当前设计需求</div>
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
-                    <div className={`brief-field ${!message.brief?.[field] && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
+                    <div className={`brief-field ${field === "size" && index === latestBriefIndex && !readOnly ? "ratio-picker" : !message.brief?.[field] && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
                       <span>{fieldLabels[field]}</span>
-                      {field === "size" && index === latestBriefIndex && !readOnly ? <select
-                        value={message.brief?.size || DEFAULT_DESIGN_SIZE}
-                        onChange={(event) => { void persistBriefField(index, message, field, event.target.value); }}
-                        disabled={pending}
-                        aria-label={`选择${fieldLabels[field]}`}
-                      >
-                        {DESIGN_SIZE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.value}</option>)}
-                      </select> : editingField === field && index === latestBriefIndex ? <input
+                      {field === "size" && index === latestBriefIndex && !readOnly ? <div className="ratio-grid" role="radiogroup" aria-label="选择比例">
+                        {DESIGN_SIZE_OPTIONS.map((option) => {
+                          const selected = (message.brief?.size || DEFAULT_DESIGN_SIZE) === option.value;
+                          return <button
+                            type="button"
+                            className={`ratio-option ${selected ? "selected" : ""}`}
+                            key={option.value}
+                            role="radio"
+                            aria-checked={selected}
+                            disabled={pending}
+                            onClick={() => { void persistBriefField(index, message, field, option.value); }}
+                          >
+                            <i className="ratio-icon" style={{ aspectRatio: option.value.replace(":", " / ") }} aria-hidden="true" />
+                            <b>{option.value}</b>
+                          </button>;
+                        })}
+                      </div> : editingField === field && index === latestBriefIndex ? <input
                         autoFocus
                         value={editingValue}
                         onChange={(event) => setEditingValue(event.target.value)}
