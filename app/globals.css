@@ -71,10 +71,10 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .brief-field-input > span { padding-top: 8px; }
 .brief-field > span { color: #8b8e89; }
 .brief-field b { overflow: hidden; color: #e8e7e1; font-weight: 450; text-overflow: ellipsis; white-space: nowrap; }
-.brief-field input { min-width: 0; width: 100%; padding: 4px 6px; border: 1px solid rgba(255,128,86,.64); border-radius: 6px; outline: 0; color: #fff; background: #2c302e; font: inherit; }
+.brief-field input, .brief-field select { min-width: 0; width: 100%; padding: 4px 6px; border: 1px solid rgba(255,128,86,.64); border-radius: 6px; outline: 0; color: #fff; background: #2c302e; font: inherit; }
 .brief-entry { min-width: 0; }
-.brief-entry input { min-height: 33px; padding: 7px 9px; border-color: rgba(239,236,226,.16); border-radius: 8px; background: #292c2b; font-size: 12px; }
-.brief-entry input:focus { border-color: rgba(255,128,86,.7); }
+.brief-entry input, .brief-entry select { min-height: 33px; padding: 7px 9px; border-color: rgba(239,236,226,.16); border-radius: 8px; background: #292c2b; font-size: 12px; }
+.brief-entry input:focus, .brief-entry select:focus { border-color: rgba(255,128,86,.7); }
 .brief-entry input::placeholder { color: #777c77; }
 .brief-field em { padding: 3px 6px; border-radius: 100px; font-size: 10px; font-style: normal; line-height: 1; white-space: nowrap; }
 .brief-field em.user { color: #c7f2aa; background: rgba(131, 211, 95, .13); }

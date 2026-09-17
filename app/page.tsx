@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { DEFAULT_DESIGN_SIZE, DESIGN_SIZE_OPTIONS } from "@/lib/design-sizes";
 
 type Brief = {
   title: string;
@@ -25,7 +26,7 @@ type ReferenceImage = { dataUrl: string; thumbnail: string; name: string };
 type ConversationSummary = { id: string; title: string; createdAt: string; updatedAt: string; messageCount: number };
 type ActiveConversation = { id: string; token: string };
 
-const emptyBrief: Brief = { title: "", subtitle: "", copy: "", size: "", style: "" };
+const emptyBrief: Brief = { title: "", subtitle: "", copy: "", size: DEFAULT_DESIGN_SIZE, style: "" };
 const welcome: Message = {
   role: "assistant",
   content: "你好，我是张文杰设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。\n\n你可以跟我说你要做什么，例如：设计一个海报，主标题是xxx，副标题是xxx，下面的文案是xxx，尺寸是：9:16，3d卡通风格。",
@@ -46,7 +47,7 @@ const fieldPlaceholders: Record<keyof Brief, string> = {
   title: "例如：有问题找助理",
   subtitle: "例如：24 小时在线响应",
   copy: "例如：说出你的问题，马上获得帮助",
-  size: "例如：9:16",
+  size: "选择尺寸",
   style: "输入或选择一种风格",
 };
 const stylePresets = ["3D 卡通", "写实风", "极简平面", "国潮插画", "轻奢质感", "赛博朋克"];
@@ -171,12 +172,10 @@ function applyRecommendations(brief: Brief, message: string): { brief: Brief; fi
   return { brief: next, fields };
 }
 
-function applyPosterSizeDefault(messages: Message[]): Message[] {
-  const isPosterConversation = messages.some((message) => message.role === "user" && /海报|poster/i.test(message.content));
-  if (!isPosterConversation) return messages;
+function applySizeDefault(messages: Message[]): Message[] {
   return messages.map((message) => message.brief && !message.brief.size ? {
     ...message,
-    brief: { ...message.brief, size: "9:16" },
+    brief: { ...message.brief, size: DEFAULT_DESIGN_SIZE },
     sources: { ...message.sources, size: "ai" },
   } : message);
 }
@@ -263,7 +262,7 @@ export default function Home() {
       setWriteToken(token);
       setReadOnly(!token);
       if (token) rememberConversation({ id, token });
-      const loadedMessages = applyPosterSizeDefault(data.conversation.messages?.length ? data.conversation.messages : [welcome]);
+      const loadedMessages = applySizeDefault(data.conversation.messages?.length ? data.conversation.messages : [welcome]);
       const latestBrief = [...loadedMessages].reverse().find((message) => message.brief);
       setMessages(loadedMessages);
       setBrief(latestBrief?.brief || emptyBrief);
@@ -645,7 +644,15 @@ export default function Home() {
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
                     <div className={`brief-field ${!message.brief?.[field] && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
                       <span>{fieldLabels[field]}</span>
-                      {editingField === field && index === latestBriefIndex ? <input
+                      {editingField === field && index === latestBriefIndex ? field === "size" ? <select
+                        autoFocus
+                        value={editingValue || DEFAULT_DESIGN_SIZE}
+                        onChange={(event) => setEditingValue(event.target.value)}
+                        onKeyDown={(event) => { if (event.key === "Escape") { setEditingField(null); setEditingValue(""); } }}
+                        aria-label={`编辑${fieldLabels[field]}`}
+                      >
+                        {DESIGN_SIZE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.value}</option>)}
+                      </select> : <input
                         autoFocus
                         value={editingValue}
                         onChange={(event) => setEditingValue(event.target.value)}
@@ -655,14 +662,20 @@ export default function Home() {
                         }}
                         aria-label={`编辑${fieldLabels[field]}`}
                       /> : !message.brief?.[field] && index === latestBriefIndex ? <div className="brief-entry">
-                        <input
+                        {field === "size" ? <select
+                          value={briefDrafts.size ?? DEFAULT_DESIGN_SIZE}
+                          onChange={(event) => { void persistBriefField(index, message, field, event.target.value); }}
+                          aria-label={`填写${fieldLabels[field]}`}
+                        >
+                          {DESIGN_SIZE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.value}</option>)}
+                        </select> : <input
                           value={briefDrafts[field] ?? ""}
                           placeholder={fieldPlaceholders[field]}
                           onChange={(event) => setBriefDrafts((current) => ({ ...current, [field]: event.target.value }))}
                           onBlur={() => { const value = briefDrafts[field] || ""; if (value.trim()) void persistBriefField(index, message, field, value); }}
                           onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void persistBriefField(index, message, field, briefDrafts[field] || ""); } }}
                           aria-label={`填写${fieldLabels[field]}`}
-                        />
+                        />}
                         {field === "style" && <div className="style-presets" aria-label="风格预设">
                           {stylePresets.map((preset) => <button type="button" key={preset} onMouseDown={(event) => event.preventDefault()} onClick={() => { void persistBriefField(index, message, field, preset); }}>{preset}</button>)}
                         </div>}

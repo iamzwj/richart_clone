@@ -1,4 +1,5 @@
 import type { DesignBrief } from "@/lib/design";
+import { designResolutionFor } from "@/lib/design-sizes";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -13,13 +14,6 @@ const IMAGE_SIZE = "2K";
 const MAX_REFERENCE_LENGTH = 6_000_000;
 const MAX_SAVED_IMAGE_BYTES = 24 * 1024 * 1024;
 const generatedImageDir = process.env.GENERATED_IMAGE_STORE_PATH || join(process.cwd(), "data", "generated");
-const SIZE_BY_RATIO: Record<string, string> = {
-  "1:1": "1024x1024",
-  "9:16": "1024x1792",
-  "3:4": "1024x1365",
-  "4:3": "1365x1024",
-  "16:9": "1792x1024",
-};
 
 function imageDimensions(image: Buffer, contentType: string): { width: number; height: number } | null {
   if (contentType.includes("png") && image.length >= 24) {
@@ -60,11 +54,6 @@ function imageDimensions(image: Buffer, contentType: string): { width: number; h
 function filenameStem(prompt: string): string {
   const prefix = Array.from(prompt.replace(/\s/g, "").replace(/[\\/:*?\"<>|]/g, "")).slice(0, 8).join("");
   return prefix || "设计方案";
-}
-
-function modelPixelSize(size: string): string | undefined {
-  const normalised = size.toLowerCase().replace(/[：]/g, ":").replace(/[×*]/g, "x").replace(/\s/g, "");
-  return SIZE_BY_RATIO[normalised] || (/^\d{3,4}x\d{3,4}$/.test(normalised) ? normalised : undefined);
 }
 
 function apiBaseUrl(): string {
@@ -202,7 +191,7 @@ async function createOne(brief: DesignBrief, references: string[], constraints: 
     body: JSON.stringify({
       model: MODEL,
       prompt: createPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
-      size: modelPixelSize(brief.size),
+      size: designResolutionFor(brief.size),
       imageSize: IMAGE_SIZE,
       quality: QUALITY,
       variants: 1,

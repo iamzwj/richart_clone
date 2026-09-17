@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { DEFAULT_DESIGN_SIZE, normaliseDesignSize } from "@/lib/design-sizes";
 
 export type DesignBrief = {
   title: string;
@@ -12,7 +13,7 @@ export const emptyDesignBrief: DesignBrief = {
   title: "",
   subtitle: "",
   copy: "",
-  size: "",
+  size: DEFAULT_DESIGN_SIZE,
   style: "",
 };
 
@@ -66,7 +67,7 @@ export function normaliseBrief(value: Partial<DesignBrief>): DesignBrief {
     title: clean(value.title),
     subtitle: clean(value.subtitle),
     copy: clean(value.copy),
-    size: clean(value.size),
+    size: normaliseDesignSize(value.size),
     style: clean(value.style),
   };
 }
