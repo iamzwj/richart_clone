@@ -62,6 +62,7 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .welcome-example p { color: #babcb7; font-size: 13px; line-height: 1.72; }
 .welcome-example p:first-of-type { color: #eeece6; font-size: 15px; font-weight: 570; }
 .brief-card { width: min(100%, 440px); margin-top: 10px; overflow: hidden; border: 1px solid rgba(239,236,226,.12); border-radius: 14px; background: #1e2120; box-shadow: 0 11px 24px rgba(0,0,0,.17); }
+.brief-card:has(.ratio-grid) { overflow: visible; }
 .brief-card-title { display: flex; align-items: center; min-height: 43px; padding: 10px 14px; border-bottom: 1px solid var(--line); color: #f5f1e9; font-size: 13px; font-weight: 620; }
 .brief-card-title::before { content: ""; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 12px rgba(255,128,86,.55); }
 .brief-field { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto auto; align-items: center; gap: 9px; padding: 9px 14px; border-bottom: 1px solid rgba(239,236,226,.07); font-size: 12px; }
@@ -70,18 +71,18 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .brief-field > span { color: #8b8e89; }
 .brief-field b { overflow: hidden; color: #e8e7e1; font-weight: 450; text-overflow: ellipsis; white-space: nowrap; }
 .brief-field input, .brief-field select { min-width: 0; width: 100%; padding: 4px 6px; border: 1px solid rgba(255,128,86,.64); border-radius: 6px; outline: 0; color: #fff; background: #2c302e; font: inherit; }
-.ratio-picker { display: block; padding: 13px 14px 14px; }
-.ratio-picker > span { display: block; margin-bottom: 10px; color: #bbb8c3; font-size: 13px; font-weight: 600; }
-.ratio-picker-control { min-width: 0; }
-.ratio-trigger { width: 100%; min-height: 46px; display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border: 1px solid rgba(239,236,226,.16); border-radius: 10px; background: rgba(255,255,255,.045); color: #d0ccd6; cursor: pointer; }
+.brief-field.ratio-picker { position: relative; z-index: 2; display: grid; grid-template-columns: 58px minmax(0, 1fr) auto auto; padding: 9px 14px; }
+.ratio-picker > span { margin: 0; color: #8b8e89; font-size: 12px; font-weight: 400; }
+.ratio-picker-control { position: relative; width: max-content; min-width: 0; }
+.ratio-trigger { width: 112px; min-height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 5px 8px; border: 1px solid rgba(239,236,226,.16); border-radius: 8px; background: rgba(255,255,255,.045); color: #d0ccd6; cursor: pointer; }
 .ratio-trigger:hover:not(:disabled) { border-color: rgba(153,112,255,.65); background: rgba(126,86,218,.1); }
 .ratio-trigger:disabled { cursor: wait; opacity: .6; }
-.ratio-trigger > span { display: inline-flex; align-items: center; gap: 10px; }
-.ratio-trigger .ratio-icon { height: 19px; max-width: 31px; border-width: 1.5px; }
-.ratio-trigger b { color: inherit; font-size: 13px; font-weight: 650; }
-.ratio-chevron { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; transition: transform .16s ease; }
+.ratio-trigger > span { display: inline-flex; align-items: center; gap: 7px; }
+.ratio-trigger .ratio-icon { height: 17px; max-width: 27px; border-width: 1.5px; }
+.ratio-trigger b { color: inherit; font-size: 12px; font-weight: 650; }
+.ratio-chevron { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; transition: transform .16s ease; }
 .ratio-chevron.open { transform: rotate(180deg); }
-.ratio-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+.ratio-grid { position: absolute; z-index: 3; top: calc(100% + 7px); left: 0; width: min(360px, calc(100vw - 92px)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; padding: 9px; border: 1px solid rgba(239,236,226,.14); border-radius: 12px; background: #242625; box-shadow: 0 16px 30px rgba(0,0,0,.34); }
 .ratio-option { min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 5px 4px; border: 1px solid rgba(239,236,226,.12); border-radius: 10px; background: rgba(255,255,255,.045); color: #ccc8d3; cursor: pointer; transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease; }
 .ratio-option:hover:not(:disabled) { border-color: rgba(153,112,255,.65); background: rgba(126,86,218,.13); transform: translateY(-1px); }
 .ratio-option.selected { border-color: #8e64ff; background: rgba(107,72,198,.24); box-shadow: inset 0 0 0 1px rgba(166,136,255,.24); color: #a987ff; }
