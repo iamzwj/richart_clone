@@ -14,6 +14,7 @@ export type ConversationMessage = {
   role: "user" | "assistant";
   content: string;
   images?: ConversationImage[];
+  referenceThumbnail?: string;
   brief?: ConversationBrief;
   sources?: Partial<Record<keyof ConversationBrief, "user" | "ai">>;
   constraints?: string[];
@@ -55,6 +56,9 @@ function cleanMessage(value: unknown): ConversationMessage | null {
       return /^https:\/\//.test(url) ? [{ url }] : [];
     }).slice(0, 2)
     : undefined;
+  const referenceThumbnail = typeof source.referenceThumbnail === "string" && /^data:image\/(?:png|jpeg|webp);base64,/.test(source.referenceThumbnail) && source.referenceThumbnail.length <= 100_000
+    ? source.referenceThumbnail
+    : undefined;
   const rawBrief = source.brief && typeof source.brief === "object" ? source.brief as Record<string, unknown> : undefined;
   const brief = rawBrief ? {
     title: cleanText(rawBrief.title, 1_000),
@@ -71,8 +75,8 @@ function cleanMessage(value: unknown): ConversationMessage | null {
     ? source.constraints.map((item) => cleanText(item, 200)).filter(Boolean).slice(0, 12)
     : undefined;
 
-  if (!content && !images?.length && !brief) return null;
-  return { role: source.role, content, images, brief, sources, constraints };
+  if (!content && !images?.length && !referenceThumbnail && !brief) return null;
+  return { role: source.role, content, images, referenceThumbnail, brief, sources, constraints };
 }
 
 async function readStore(): Promise<StoredConversation[]> {

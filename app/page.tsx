@@ -16,11 +16,12 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   images?: GeneratedImage[];
+  referenceThumbnail?: string;
   brief?: Brief;
   sources?: Partial<Record<keyof Brief, FieldSource>>;
   constraints?: string[];
 };
-type ReferenceImage = { dataUrl: string; name: string };
+type ReferenceImage = { dataUrl: string; thumbnail: string; name: string };
 type ConversationSummary = { id: string; title: string; createdAt: string; updatedAt: string; messageCount: number };
 type ActiveConversation = { id: string; token: string };
 
@@ -60,6 +61,31 @@ function readImage(file: File): Promise<string> {
       : reject(new Error("参考图读取失败，请重试。"));
     reader.readAsDataURL(file);
   });
+}
+
+function createSquareThumbnail(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const side = Math.min(image.naturalWidth, image.naturalHeight);
+      const sourceX = (image.naturalWidth - side) / 2;
+      const sourceY = (image.naturalHeight - side) / 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = 160;
+      canvas.height = 160;
+      const context = canvas.getContext("2d");
+      if (!context) return reject(new Error("参考图缩略图生成失败。"));
+      context.drawImage(image, sourceX, sourceY, side, side, 0, 0, 160, 160);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    image.onerror = () => reject(new Error("参考图缩略图生成失败。"));
+    image.src = dataUrl;
+  });
+}
+
+function explicitSize(message: string): string {
+  const match = message.match(/\d{1,2}\s*[:：]\s*\d{1,2}|\d{3,4}\s*[x×*]\s*\d{3,4}/);
+  return match ? match[0].replace(/[：]/g, ":").replace(/[×*]/g, "x").replace(/\s/g, "") : "";
 }
 
 function applyRecommendations(brief: Brief, message: string): { brief: Brief; fields: (keyof Brief)[] } {
@@ -141,6 +167,7 @@ export default function Home() {
   const [editingField, setEditingField] = useState<keyof Brief | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const [briefDrafts, setBriefDrafts] = useState<Partial<Brief>>({});
+  const [draggingReference, setDraggingReference] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const name = process.env.NEXT_PUBLIC_CLONE_NAME || "张文杰";
@@ -326,6 +353,7 @@ export default function Home() {
     active: ActiveConversation,
     modification?: string,
     snapshot?: Pick<Message, "brief" | "sources" | "constraints">,
+    directReferences?: string[],
   ) {
     setPending(true);
     setError("");
@@ -339,9 +367,9 @@ export default function Home() {
 
     try {
       const activeConstraints = snapshot?.constraints || constraints;
-      const sources = reference
+      const sources = directReferences || (reference
         ? [reference.dataUrl]
-        : generatedImages.map((image) => image.url).slice(0, 2);
+        : generatedImages.map((image) => image.url).slice(0, 2));
 
       const images = modification && sources.length > 1
         ? (await Promise.all(sources.map((source) => createImages(nextBrief, [source], modification, 1, activeConstraints)))).flat()
@@ -375,11 +403,20 @@ export default function Home() {
     setPending(true);
     try {
       const active = await ensureConversation();
-      const userMessage: Message = { role: "user", content };
+      const selectedReference = reference;
+      const userMessage: Message = { role: "user", content, referenceThumbnail: selectedReference?.thumbnail };
       setMessages((current) => [...current, userMessage]);
       void saveMessage(active, userMessage);
       setInput("");
       setError("");
+      setReference(null);
+
+      if (selectedReference) {
+        const editBrief = { ...emptyBrief, size: explicitSize(content) };
+        setPending(false);
+        await generate(editBrief, active, content, undefined, [selectedReference.dataUrl]);
+        return;
+      }
 
       if (mode === "review" && isSatisfied(content)) {
         const reply: Message = { role: "assistant", content: "太好了。如果还需要新的尺寸、文案或风格，直接告诉我修改方向就可以。" };
@@ -433,7 +470,8 @@ export default function Home() {
     try {
       setError("");
       const dataUrl = await readImage(file);
-      setReference({ dataUrl, name: file.name });
+      const thumbnail = await createSquareThumbnail(dataUrl);
+      setReference({ dataUrl, thumbnail, name: file.name });
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "参考图读取失败，请重试。");
     }
@@ -462,7 +500,12 @@ export default function Home() {
   const latestBriefIndex = messages.reduce((latest, message, index) => message.brief ? index : latest, -1);
 
   return (
-    <main className="workspace">
+    <main
+      className={`workspace ${draggingReference ? "dragging-reference" : ""}`}
+      onDragOver={(event) => { event.preventDefault(); if (!readOnly) setDraggingReference(true); }}
+      onDragLeave={(event) => { if (event.currentTarget === event.target) setDraggingReference(false); }}
+      onDrop={(event) => { event.preventDefault(); setDraggingReference(false); if (!readOnly) void selectReference(event.dataTransfer.files?.[0]); }}
+    >
       <aside className="conversation-sidebar" aria-label="公开对话列表">
         <div className="sidebar-header">
           <div className="sidebar-title">
@@ -512,6 +555,7 @@ export default function Home() {
                 {message.role === "assistant" ? <img src="/zhangwenjie-avatar.png" alt="" /> : "我"}
               </div>
               <div className="message-content">
+                {message.referenceThumbnail && <button type="button" className="message-reference" onClick={() => setPreview({ url: message.referenceThumbnail || "" })} aria-label="预览参考图"><img src={message.referenceThumbnail} alt="用户上传的参考图" /></button>}
                 {message.content && (message === welcome ? <WelcomeMessage /> : <div className="bubble">{message.content}</div>)}
                 {message.brief && <section className="brief-card" aria-label="当前设计需求">
                   <div className="brief-card-title">当前设计需求</div>
@@ -579,8 +623,7 @@ export default function Home() {
 
         <form onSubmit={send} className="composer">
           {reference && <div className="reference-preview">
-            <img src={reference.dataUrl} alt="待参考的上传图片" />
-            <span>{reference.name}</span>
+            <img src={reference.thumbnail} alt="待参考的上传图片" />
             <button type="button" onClick={() => setReference(null)} aria-label="移除参考图">×</button>
           </div>}
           <div className="composer-row">

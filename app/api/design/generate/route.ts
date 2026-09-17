@@ -25,14 +25,14 @@ export async function POST(request: NextRequest) {
     const brief = normaliseBrief(
       body.brief && typeof body.brief === "object" ? body.brief as Record<string, unknown> : {},
     );
-    if (Object.values(brief).some((value) => !value)) {
-      return NextResponse.json({ error: "请先补全主标题、副标题、文案、尺寸和风格。" }, { status: 400 });
-    }
-
     const references = Array.isArray(body.references)
       ? body.references.filter((item): item is string => typeof item === "string" && (item.startsWith("data:image/") || isAllowedImageUrl(item))).slice(0, 1)
       : [];
     const modification = typeof body.modification === "string" ? body.modification.trim().slice(0, 2_000) : undefined;
+    const isReferenceEdit = references.length > 0 && Boolean(modification);
+    if (!isReferenceEdit && Object.values(brief).some((value) => !value)) {
+      return NextResponse.json({ error: "请先补全主标题、副标题、文案、尺寸和风格。" }, { status: 400 });
+    }
     const constraints = Array.isArray(body.constraints)
       ? body.constraints.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, 200)).filter(Boolean).slice(0, 12)
       : [];

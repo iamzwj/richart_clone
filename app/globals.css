@@ -7,6 +7,7 @@ button, textarea { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; }
 .workspace { width: min(1180px, 100%); min-height: 100dvh; display: grid; grid-template-columns: 292px minmax(0, 1fr); align-items: center; gap: 18px; margin: 0 auto; padding: clamp(18px, 4vw, 48px); }
+.workspace.dragging-reference::after { content: "松开即可上传参考图"; position: fixed; z-index: 20; inset: 16px; display: grid; place-items: center; border: 2px dashed rgba(255,128,86,.82); border-radius: 22px; background: rgba(15,17,16,.8); color: #ffd1c1; font-size: 18px; font-weight: 620; pointer-events: none; backdrop-filter: blur(4px); }
 .conversation-sidebar, .wechat-window { min-height: min(820px, calc(100dvh - 64px)); height: min(820px, calc(100dvh - 64px)); border: 1px solid var(--line); background: rgba(24, 26, 26, .9); box-shadow: 0 30px 90px rgba(0, 0, 0, .36); backdrop-filter: blur(18px); }
 .conversation-sidebar { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; }
 .conversation-sidebar::after { content: ""; position: absolute; top: 0; right: 18px; left: 18px; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,128,86,.78), transparent); opacity: .8; }
@@ -47,6 +48,8 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .user .avatar { border-color: rgba(146, 224, 114, .35); background: #b8e874; color: #1d3015; }
 .bubble { position: relative; max-width: 100%; padding: 13px 15px; border: 1px solid rgba(239,236,226,.11); border-radius: 6px 15px 15px 15px; background: #252827; color: #f0eee9; box-shadow: 0 7px 20px rgba(0,0,0,.12); font-size: 16px; line-height: 1.72; white-space: pre-wrap; word-break: break-word; }
 .user .bubble { border-color: rgba(7,193,96,.28); border-radius: 15px 6px 15px 15px; background: linear-gradient(135deg, #a8e96c, #75d55a); color: #172514; }
+.message-reference { display: block; width: 68px; height: 68px; margin: 0 0 8px auto; padding: 0; overflow: hidden; border: 1px solid rgba(255,128,86,.55); border-radius: 12px; background: #242726; cursor: zoom-in; }
+.message-reference img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .welcome-bubble { width: min(100%, 535px); padding: 20px 21px 18px; border: 1px solid rgba(239,236,226,.13); border-radius: 6px 18px 18px 18px; background: linear-gradient(135deg, #282b2a, #222523); box-shadow: 0 12px 28px rgba(0,0,0,.16); }
 .welcome-bubble p { margin: 0; }
 .welcome-greeting { color: #f6f2eb; font-size: 20px; font-weight: 460; letter-spacing: .01em; line-height: 1.42; }
@@ -109,11 +112,10 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .send { flex: 0 0 auto; height: 46px; padding: 0 17px; border: 0; border-radius: 14px; background: var(--wechat-green); box-shadow: 0 7px 17px rgba(7,193,96,.18); color: #fff; cursor: pointer; font-size: 14px; font-weight: 600; transition: background .2s ease, transform .2s ease; }
 .send:hover { background: #0ab768; transform: translateY(-1px); }
 .upload:disabled, .send:disabled { cursor: not-allowed; opacity: .42; transform: none; }
-.reference-preview { display: flex; align-items: center; gap: 9px; min-width: 0; margin-bottom: 10px; padding: 7px 8px; border: 1px solid rgba(255,128,86,.34); border-radius: 12px; background: rgba(255,128,86,.075); }
-.reference-preview img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
-.reference-preview span { min-width: 0; flex: 1; overflow: hidden; color: #d5d3cc; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.reference-preview button { width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: #bdbdb7; cursor: pointer; font-size: 20px; }
-.reference-preview button:hover { background: rgba(255,255,255,.08); color: #fff; }
+.reference-preview { position: relative; width: 58px; height: 58px; margin-bottom: 10px; overflow: hidden; border: 1px solid rgba(255,128,86,.52); border-radius: 13px; background: #272a29; }
+.reference-preview img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.reference-preview button { position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: rgba(13,14,14,.72); color: #fff; cursor: pointer; font-size: 17px; line-height: 1; }
+.reference-preview button:hover { background: rgba(255,128,86,.9); }
 .preview-modal { position: fixed; z-index: 10; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(6,7,7,.86); backdrop-filter: blur(8px); }
 .preview-card { position: relative; display: grid; justify-items: center; gap: 13px; max-width: min(92vw, 900px); max-height: 90dvh; padding: 43px 15px 16px; border: 1px solid var(--line-strong); border-radius: 18px; background: #1b1e1d; box-shadow: 0 28px 100px rgba(0,0,0,.55); }
 .preview-card img { display: block; max-width: 100%; max-height: calc(90dvh - 104px); border-radius: 8px; object-fit: contain; }

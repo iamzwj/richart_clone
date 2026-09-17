@@ -107,7 +107,17 @@ async function pollResult(id: string): Promise<string[]> {
   throw new Error("生图等待超时，请稍后重试。");
 }
 
-function createPrompt(brief: DesignBrief, constraints: string[], modification?: string): string {
+function createPrompt(brief: DesignBrief, constraints: string[], modification?: string, isReferenceEdit = false): string {
+  if (isReferenceEdit) {
+    return [
+      "Image editing task: use the supplied image as the source image.",
+      "Preserve the source image's original canvas ratio, composition, subject, and visual style unless the modification explicitly requests a change.",
+      brief.size ? `Requested output size: ${brief.size}; render at 2K.` : "Keep the source image's original size and aspect ratio; render at 2K.",
+      `Modification instructions: ${modification}`,
+      constraints.length ? `Project constraints: ${constraints.join("; ")}.` : "",
+      "No watermark, no extra brand names.",
+    ].filter(Boolean).join("\n");
+  }
   return [
     "Use case: ads-marketing",
     "Asset type: Chinese marketing poster",
@@ -133,8 +143,8 @@ async function createOne(brief: DesignBrief, references: string[], constraints: 
     headers: apiHeaders(),
     body: JSON.stringify({
       model: MODEL,
-      prompt: createPrompt(brief, constraints, modification),
-      size: brief.size,
+      prompt: createPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
+      size: brief.size || undefined,
       imageSize: IMAGE_SIZE,
       quality: QUALITY,
       variants: 1,
