@@ -107,7 +107,7 @@ async function pollResult(id: string): Promise<string[]> {
   throw new Error("生图等待超时，请稍后重试。");
 }
 
-function createPrompt(brief: DesignBrief, modification?: string): string {
+function createPrompt(brief: DesignBrief, constraints: string[], modification?: string): string {
   return [
     "Use case: ads-marketing",
     "Asset type: Chinese marketing poster",
@@ -118,11 +118,12 @@ function createPrompt(brief: DesignBrief, modification?: string): string {
     `Canvas aspect ratio: ${brief.size}; render at 2K.`,
     `Style/medium: ${brief.style}.`,
     "Constraints: Preserve Chinese copy exactly where possible, create clear information hierarchy, keep generous safe margins, no watermark, no extra brand names.",
+    constraints.length ? `Project constraints: ${constraints.join("; ")}.` : "",
     modification ? `Modification instructions: ${modification}` : "",
   ].filter(Boolean).join("\n");
 }
 
-async function createOne(brief: DesignBrief, references: string[], modification?: string): Promise<string[]> {
+async function createOne(brief: DesignBrief, references: string[], constraints: string[], modification?: string): Promise<string[]> {
   if (references.some((reference) => reference.length > MAX_REFERENCE_LENGTH)) {
     throw new Error("参考图过大，请上传不超过 4MB 的图片。");
   }
@@ -132,7 +133,7 @@ async function createOne(brief: DesignBrief, references: string[], modification?
     headers: apiHeaders(),
     body: JSON.stringify({
       model: MODEL,
-      prompt: createPrompt(brief, modification),
+      prompt: createPrompt(brief, constraints, modification),
       size: brief.size,
       imageSize: IMAGE_SIZE,
       quality: QUALITY,
@@ -150,10 +151,11 @@ async function createOne(brief: DesignBrief, references: string[], modification?
 export async function generateDesignImages(
   brief: DesignBrief,
   references: string[],
+  constraints: string[],
   modification?: string,
   count = 2,
 ): Promise<GeneratedImage[]> {
-  const batches = await Promise.all(Array.from({ length: count }, () => createOne(brief, references, modification)));
+  const batches = await Promise.all(Array.from({ length: count }, () => createOne(brief, references, constraints, modification)));
   const urls = batches.flat().filter(Boolean).slice(0, count);
   if (!urls.length) throw new Error("生图服务没有返回图片，请稍后重试。");
   return urls.map((url) => ({ url }));

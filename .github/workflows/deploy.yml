@@ -80,12 +80,14 @@ jobs:
           GRSAI_API_KEY: ${{ secrets.GRSAI_API_KEY }}
           GRSAI_BASE_URL: ${{ vars.GRSAI_BASE_URL || 'https://grsaiapi.com' }}
           GRSAI_MODEL: ${{ vars.GRSAI_MODEL || 'gemini-3.1-flash-lite' }}
+          CONVERSATION_STORE_PATH: /opt/richart-clone/data/conversations.json
         run: |
           umask 077
           {
             printf 'GRSAI_API_KEY=%s\n' "$GRSAI_API_KEY"
             printf 'GRSAI_BASE_URL=%s\n' "$GRSAI_BASE_URL"
             printf 'GRSAI_MODEL=%s\n' "$GRSAI_MODEL"
+            printf 'CONVERSATION_STORE_PATH=%s\n' "$CONVERSATION_STORE_PATH"
           } > .richart-clone-runtime.env
 
       - name: Upload release
@@ -117,6 +119,7 @@ jobs:
           runtime_env=/tmp/.richart-clone-runtime.env
 
           sudo mkdir -p "$release_dir"
+          sudo install -d -o richart -g richart -m 700 /opt/richart-clone/data
           sudo tar -xzf "$archive" -C "$release_dir"
           sudo rm -f "$archive"
           sudo chown -R richart:richart "$release_dir"

@@ -27,6 +27,7 @@ fi
 
 id -u richart >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin richart
 install -d -o richart -g richart -m 755 /opt/richart-clone/releases
+install -d -o richart -g richart -m 700 /opt/richart-clone/data
 
 cat >/etc/systemd/system/richart-clone.service <<'EOF'
 [Unit]

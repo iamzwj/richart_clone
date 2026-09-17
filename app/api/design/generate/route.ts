@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as {
       brief?: unknown;
       references?: unknown;
+      constraints?: unknown;
       modification?: unknown;
       count?: unknown;
     };
@@ -32,8 +33,11 @@ export async function POST(request: NextRequest) {
       ? body.references.filter((item): item is string => typeof item === "string" && (item.startsWith("data:image/") || isAllowedImageUrl(item))).slice(0, 1)
       : [];
     const modification = typeof body.modification === "string" ? body.modification.trim().slice(0, 2_000) : undefined;
+    const constraints = Array.isArray(body.constraints)
+      ? body.constraints.filter((item): item is string => typeof item === "string").map((item) => item.trim().slice(0, 200)).filter(Boolean).slice(0, 12)
+      : [];
     const count = body.count === 1 ? 1 : 2;
-    const images = await generateDesignImages(brief, references, modification, count);
+    const images = await generateDesignImages(brief, references, constraints, modification, count);
     return NextResponse.json({ images });
   } catch (error) {
     const message = error instanceof Error ? error.message : "生图失败，请稍后重试。";

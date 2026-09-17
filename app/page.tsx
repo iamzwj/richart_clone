@@ -10,9 +10,19 @@ type Brief = {
   style: string;
 };
 
+type FieldSource = "user" | "ai";
 type GeneratedImage = { url: string };
-type Message = { role: "user" | "assistant"; content: string; images?: GeneratedImage[] };
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+  images?: GeneratedImage[];
+  brief?: Brief;
+  sources?: Partial<Record<keyof Brief, FieldSource>>;
+  constraints?: string[];
+};
 type ReferenceImage = { dataUrl: string; name: string };
+type ConversationSummary = { id: string; title: string; createdAt: string; updatedAt: string; messageCount: number };
+type ActiveConversation = { id: string; token: string };
 
 const emptyBrief: Brief = { title: "", subtitle: "", copy: "", size: "", style: "" };
 const welcome: Message = {
@@ -44,12 +54,50 @@ function readImage(file: File): Promise<string> {
   });
 }
 
+function applyRecommendations(brief: Brief, message: string): { brief: Brief; fields: (keyof Brief)[] } {
+  const delegated = /(都行|你看着|随便|没要求)/.test(message);
+  const next = { ...brief };
+  const fields: (keyof Brief)[] = [];
+  const delegatedValue = (value: string) => /(都行|你看着|随便|没要求)/.test(value);
+  if ((!next.size || delegatedValue(next.size)) && (delegated || /(?:尺寸|比例)[^。！!，,]{0,12}(?:都行|你看着|随便|没要求)/.test(message))) {
+    next.size = "9:16";
+    fields.push("size");
+  }
+  if ((!next.style || delegatedValue(next.style)) && (delegated || /风格[^。！!，,]{0,12}(?:都行|你看着|随便|没要求)/.test(message))) {
+    next.style = "现代、简洁、专业的商业海报风格";
+    fields.push("style");
+  }
+  return { brief: next, fields };
+}
+
+function updateConstraints(message: string, current: string[]): string[] {
+  const additions = [
+    [/不要太写实|避免写实/, "避免写实摄影风格"],
+    [/不要科技感|避免科技感/, "避免科技感"],
+    [/人(?:物)?不要太多|减少人物/, "避免人物过多"],
+    [/彩带.*少|少.*彩带/, "少量使用彩带装饰"],
+  ].filter(([pattern]) => (pattern as RegExp).test(message)).map(([, value]) => value as string);
+  return [...new Set([...current, ...additions])];
+}
+
+function formatConversationTime(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "刚刚" : new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(date);
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [brief, setBrief] = useState<Brief>(emptyBrief);
+  const [sources, setSources] = useState<Partial<Record<keyof Brief, FieldSource>>>({});
+  const [constraints, setConstraints] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [reference, setReference] = useState<ReferenceImage | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [writeToken, setWriteToken] = useState<string | null>(null);
+  const [conversationList, setConversationList] = useState<ConversationSummary[]>([]);
+  const [readOnly, setReadOnly] = useState(false);
+  const [loadingConversation, setLoadingConversation] = useState(false);
   const [mode, setMode] = useState<"collect" | "review">("collect");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -68,6 +116,82 @@ export default function Home() {
       element.scrollIntoView();
     }
   }, [messages, pending, error]);
+
+  async function refreshConversationList() {
+    const response = await fetch("/api/conversations", { cache: "no-store" });
+    const data = await response.json().catch(() => ({})) as { conversations?: ConversationSummary[] };
+    if (response.ok && data.conversations) setConversationList(data.conversations);
+  }
+
+  async function openConversation(id: string, token: string | null) {
+    setLoadingConversation(true);
+    try {
+      const response = await fetch(`/api/conversations/${id}`, { cache: "no-store" });
+      const data = await response.json().catch(() => ({})) as { conversation?: { messages?: Message[] } };
+      if (!response.ok || !data.conversation) throw new Error("无法读取对话记录。");
+      setConversationId(id);
+      setWriteToken(token);
+      setReadOnly(!token);
+      const loadedMessages = data.conversation.messages?.length ? data.conversation.messages : [welcome];
+      const latestBrief = [...loadedMessages].reverse().find((message) => message.brief);
+      setMessages(loadedMessages);
+      setBrief(latestBrief?.brief || emptyBrief);
+      setSources(latestBrief?.sources || {});
+      setConstraints(latestBrief?.constraints || []);
+      setReference(null);
+      setGeneratedImages([]);
+      setMode("review");
+      setError("");
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "无法读取对话记录。");
+    } finally {
+      setLoadingConversation(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshConversationList();
+    const timer = window.setInterval(() => { void refreshConversationList(); }, 3_000);
+    const saved = window.sessionStorage.getItem("zhangwenjie-design-conversation");
+    if (saved) {
+      try {
+        const active = JSON.parse(saved) as ActiveConversation;
+        if (active.id && active.token) void openConversation(active.id, active.token);
+      } catch {
+        window.sessionStorage.removeItem("zhangwenjie-design-conversation");
+      }
+    }
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!conversationId || !readOnly) return;
+    const timer = window.setInterval(() => { void openConversation(conversationId, null); }, 3_000);
+    return () => window.clearInterval(timer);
+  }, [conversationId, readOnly]);
+
+  async function ensureConversation(): Promise<ActiveConversation> {
+    if (conversationId && writeToken) return { id: conversationId, token: writeToken };
+    const response = await fetch("/api/conversations", { method: "POST" });
+    const data = await response.json().catch(() => ({})) as { conversation?: { id: string }; token?: string; error?: string };
+    if (!response.ok || !data.conversation?.id || !data.token) throw new Error(data.error || "无法创建对话。");
+    const active = { id: data.conversation.id, token: data.token };
+    window.sessionStorage.setItem("zhangwenjie-design-conversation", JSON.stringify(active));
+    setConversationId(active.id);
+    setWriteToken(active.token);
+    setReadOnly(false);
+    void refreshConversationList();
+    return active;
+  }
+
+  async function saveMessage(active: ActiveConversation, message: Message) {
+    await fetch(`/api/conversations/${active.id}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-conversation-token": active.token },
+      body: JSON.stringify({ message }),
+    }).catch(() => undefined);
+    void refreshConversationList();
+  }
 
   async function extractBrief(message: string, current: Brief): Promise<{ brief: Brief; missing: (keyof Brief)[] }> {
     const response = await fetch("/api/design/brief", {
@@ -91,11 +215,12 @@ export default function Home() {
     references: string[],
     modification?: string,
     count = 2,
+    activeConstraints = constraints,
   ): Promise<GeneratedImage[]> {
     const response = await fetch("/api/design/generate", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ brief: nextBrief, references, modification, count }),
+      body: JSON.stringify({ brief: nextBrief, references, modification, constraints: activeConstraints, count }),
     });
     const data = await response.json().catch(() => ({})) as { images?: GeneratedImage[]; error?: string };
     if (!response.ok || !data.images?.length) {
@@ -104,37 +229,45 @@ export default function Home() {
     return data.images;
   }
 
-  async function generate(nextBrief: Brief, modification?: string) {
+  async function generate(
+    nextBrief: Brief,
+    active: ActiveConversation,
+    modification?: string,
+    snapshot?: Pick<Message, "brief" | "sources" | "constraints">,
+  ) {
     setPending(true);
     setError("");
-    setMessages((current) => [
-      ...current,
-      { role: "assistant", content: modification ? "收到，我正在根据你的修改方向重新设计…" : "信息已收齐，我开始为你设计，请稍等…" },
-    ]);
+    const progressMessage: Message = {
+      role: "assistant",
+      content: modification ? "收到，我正在根据你的修改方向重新设计…" : "信息已收齐，我开始为你设计，请稍等…",
+      ...snapshot,
+    };
+    setMessages((current) => [...current, progressMessage]);
+    void saveMessage(active, progressMessage);
 
     try {
+      const activeConstraints = snapshot?.constraints || constraints;
       const sources = reference
         ? [reference.dataUrl]
         : generatedImages.map((image) => image.url).slice(0, 2);
 
       const images = modification && sources.length > 1
-        ? (await Promise.all(sources.map((source) => createImages(nextBrief, [source], modification, 1)))).flat()
-        : await createImages(nextBrief, sources, modification, 2);
+        ? (await Promise.all(sources.map((source) => createImages(nextBrief, [source], modification, 1, activeConstraints)))).flat()
+        : await createImages(nextBrief, sources, modification, 2, activeConstraints);
 
       const result = images.slice(0, 2);
       setGeneratedImages(result);
       setReference(null);
       setMode("review");
-      setMessages((current) => [
-        ...current,
-        {
-          role: "assistant",
-          content: result.length > 1
-            ? "我为你生成了两张方案。这两个图 ok 么？如果不满意，我可以继续生成，或者你跟我说修改方向。"
-            : "我为你生成了一张方案。这张图 ok 么？如果不满意，我可以继续生成，或者你跟我说修改方向。",
-          images: result,
-        },
-      ]);
+      const resultMessage: Message = {
+        role: "assistant",
+        content: result.length > 1
+          ? "我为你生成了两张方案。这两个图 ok 么？如果不满意，我可以继续生成，或者你跟我说修改方向。"
+          : "我为你生成了一张方案。这张图 ok 么？如果不满意，我可以继续生成，或者你跟我说修改方向。",
+        images: result,
+      };
+      setMessages((current) => [...current, resultMessage]);
+      void saveMessage(active, resultMessage);
     } catch (generationError) {
       setError(generationError instanceof Error ? generationError.message : "生图失败，请稍后重试。");
     } finally {
@@ -145,33 +278,58 @@ export default function Home() {
   async function send(event?: FormEvent) {
     event?.preventDefault();
     const content = input.trim();
-    if (!content || pending) return;
-
-    setMessages((current) => [...current, { role: "user", content }]);
-    setInput("");
-    setError("");
-
-    if (mode === "review" && isSatisfied(content)) {
-      setMessages((current) => [...current, { role: "assistant", content: "太好了。如果还需要新的尺寸、文案或风格，直接告诉我修改方向就可以。" }]);
-      return;
-    }
+    if (!content || pending || readOnly) return;
 
     setPending(true);
     try {
-      const extracted = await extractBrief(content, brief);
-      setBrief(extracted.brief);
+      const active = await ensureConversation();
+      const userMessage: Message = { role: "user", content };
+      setMessages((current) => [...current, userMessage]);
+      void saveMessage(active, userMessage);
+      setInput("");
+      setError("");
 
-      if (mode === "collect" && extracted.missing.length) {
-        const nextField = extracted.missing[0];
-        setMessages((current) => [
-          ...current,
-          { role: "assistant", content: `请问${fieldLabels[nextField]}是什么呢？` },
-        ]);
+      if (mode === "review" && isSatisfied(content)) {
+        const reply: Message = { role: "assistant", content: "太好了。如果还需要新的尺寸、文案或风格，直接告诉我修改方向就可以。" };
+        setMessages((current) => [...current, reply]);
+        void saveMessage(active, reply);
+        return;
+      }
+
+      const extracted = await extractBrief(content, brief);
+      const recommended = applyRecommendations(extracted.brief, content);
+      const nextBrief = recommended.brief;
+      const nextConstraints = updateConstraints(content, constraints);
+      const nextSources = { ...sources };
+      (Object.keys(fieldLabels) as (keyof Brief)[]).forEach((field) => {
+        if (recommended.fields.includes(field)) nextSources[field] = "ai";
+        else if (nextBrief[field] && nextBrief[field] !== brief[field]) nextSources[field] = "user";
+      });
+      const missing = (Object.keys(fieldLabels) as (keyof Brief)[]).filter((field) => !nextBrief[field]);
+      setBrief(nextBrief);
+      setSources(nextSources);
+      setConstraints(nextConstraints);
+
+      if (mode === "collect" && missing.length) {
+        const nextField = missing[0];
+        const question: Message = {
+          role: "assistant",
+          content: `请问${fieldLabels[nextField]}是什么呢？`,
+          brief: nextBrief,
+          sources: nextSources,
+          constraints: nextConstraints,
+        };
+        setMessages((current) => [...current, question]);
+        void saveMessage(active, question);
         return;
       }
 
       setPending(false);
-      await generate(extracted.brief, mode === "review" ? content : undefined);
+      await generate(nextBrief, active, mode === "review" ? content : undefined, {
+        brief: nextBrief,
+        sources: nextSources,
+        constraints: nextConstraints,
+      });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "暂时无法读取需求，请稍后重试。");
     } finally {
@@ -192,8 +350,14 @@ export default function Home() {
 
   function resetConversation() {
     if (pending) return;
+    window.sessionStorage.removeItem("zhangwenjie-design-conversation");
+    setConversationId(null);
+    setWriteToken(null);
+    setReadOnly(false);
     setMessages([welcome]);
     setBrief(emptyBrief);
+    setSources({});
+    setConstraints([]);
     setReference(null);
     setGeneratedImages([]);
     setMode("collect");
@@ -202,12 +366,42 @@ export default function Home() {
   }
 
   return (
-    <main className="wechat-page">
+    <main className="workspace">
+      <aside className="conversation-sidebar" aria-label="公开对话列表">
+        <div className="sidebar-header">
+          <div><h2>对话记录</h2><p>所有访客可查看</p></div>
+          <button type="button" onClick={resetConversation} disabled={pending} aria-label="新建对话">＋</button>
+        </div>
+        <div className="sidebar-list">
+          {!conversationList.length ? <p className="empty-list">暂时还没有公开对话。</p> : conversationList.map((conversation) => (
+            <button
+              type="button"
+              className={`conversation-item ${conversation.id === conversationId ? "active" : ""}`}
+              key={conversation.id}
+              onClick={() => {
+                const saved = window.sessionStorage.getItem("zhangwenjie-design-conversation");
+                let token: string | null = null;
+                if (saved) {
+                  try {
+                    const active = JSON.parse(saved) as ActiveConversation;
+                    if (active.id === conversation.id) token = active.token;
+                  } catch { /* Invalid session data should not block read-only viewing. */ }
+                }
+                void openConversation(conversation.id, token);
+              }}
+            >
+              <strong>{conversation.title}</strong>
+              <span>{conversation.messageCount} 条消息 · {formatConversationTime(conversation.updatedAt)}</span>
+            </button>
+          ))}
+        </div>
+        <p className="sidebar-note">打开其他人的对话后仅可查看，不能发送或修改。</p>
+      </aside>
       <section className="wechat-window" aria-label={`与${assistantName}对话`}>
         <header className="chat-header">
-          <div className="header-spacer" aria-hidden="true" />
+          <div className="header-spacer">{readOnly ? "只读" : ""}</div>
           <div className="contact">
-            <h1 aria-live="polite">{pending ? "对方正在输入…" : assistantName}</h1>
+            <h1 aria-live="polite">{loadingConversation ? "正在打开对话…" : pending ? "对方正在输入…" : assistantName}</h1>
           </div>
           <button className="new-chat" type="button" disabled={pending} onClick={resetConversation} aria-label="新对话" title="新对话">↻</button>
         </header>
@@ -220,6 +414,19 @@ export default function Home() {
               </div>
               <div className="message-content">
                 {message.content && <div className="bubble">{message.content}</div>}
+                {message.brief && <section className="brief-card" aria-label="当前设计需求">
+                  <div className="brief-card-title">当前设计需求</div>
+                  {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
+                    <div className="brief-field" key={field}>
+                      <span>{fieldLabels[field]}</span>
+                      <b>{message.brief?.[field] || "待确认"}</b>
+                      {message.brief?.[field] && <em className={message.sources?.[field] === "ai" ? "ai" : "user"}>
+                        {message.sources?.[field] === "ai" ? "AI 推荐" : "用户提供"}
+                      </em>}
+                    </div>
+                  ))}
+                  {message.constraints?.length ? <div className="brief-constraints">约束：{message.constraints.join(" · ")}</div> : null}
+                </section>}
                 {message.images?.length ? (
                   <div className="image-gallery">
                     {message.images.map((image, imageIndex) => (
@@ -254,7 +461,7 @@ export default function Home() {
           </div>}
           <div className="composer-row">
             <input ref={fileInputRef} className="file-input" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { void selectReference(event.target.files?.[0]); event.currentTarget.value = ""; }} />
-            <button className="upload" type="button" disabled={pending} onClick={() => fileInputRef.current?.click()} aria-label="上传参考图" title="上传参考图">＋</button>
+            <button className="upload" type="button" disabled={pending || readOnly} onClick={() => fileInputRef.current?.click()} aria-label="上传参考图" title="上传参考图">＋</button>
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
@@ -265,12 +472,12 @@ export default function Home() {
                 }
               }}
               aria-label="设计需求"
-              placeholder={mode === "review" ? "告诉我你想修改什么…" : "输入主标题、副标题、文案、尺寸和风格…"}
+              placeholder={readOnly ? "此对话仅可查看" : mode === "review" ? "告诉我你想修改什么…" : "输入主标题、副标题、文案、尺寸和风格…"}
               rows={1}
               maxLength={2000}
-              disabled={pending}
+              disabled={pending || readOnly}
             />
-            <button className="send" type="submit" disabled={pending || !input.trim()}>发送</button>
+            <button className="send" type="submit" disabled={pending || readOnly || !input.trim()}>发送</button>
           </div>
         </form>
       </section>
