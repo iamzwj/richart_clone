@@ -563,7 +563,7 @@ export default function Home() {
             <img src="/zhangwenjie-avatar.png" alt="" />
             <div><h2>对话记录</h2><p>所有访客可查看</p></div>
           </div>
-          <button className="new-conversation" type="button" onClick={resetConversation} disabled={pending}>新对话+</button>
+          <button className="new-conversation" type="button" onClick={resetConversation} disabled={pending}>新对话 +</button>
         </div>
         <div className="sidebar-list">
           {!conversationList.length ? <p className="empty-list">暂时还没有公开对话。</p> : conversationList.map((conversation) => (
