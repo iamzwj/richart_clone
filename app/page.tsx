@@ -36,6 +36,14 @@ const fieldLabels: Record<keyof Brief, string> = {
   size: "尺寸",
   style: "风格",
 };
+const fieldPlaceholders: Record<keyof Brief, string> = {
+  title: "例如：有问题找助理",
+  subtitle: "例如：24 小时在线响应",
+  copy: "例如：说出你的问题，马上获得帮助",
+  size: "例如：9:16",
+  style: "输入或选择一种风格",
+};
+const stylePresets = ["3D 卡通", "写实风", "极简平面", "国潮插画", "轻奢质感", "赛博朋克"];
 
 function isSatisfied(message: string): boolean {
   return /^(ok|好的|可以|满意|就这样|没问题)[！!。.]?$/i.test(message.trim());
@@ -132,6 +140,7 @@ export default function Home() {
   const [preview, setPreview] = useState<GeneratedImage | null>(null);
   const [editingField, setEditingField] = useState<keyof Brief | null>(null);
   const [editingValue, setEditingValue] = useState("");
+  const [briefDrafts, setBriefDrafts] = useState<Partial<Brief>>({});
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const name = process.env.NEXT_PUBLIC_CLONE_NAME || "张文杰";
@@ -233,25 +242,46 @@ export default function Home() {
     void refreshConversationList();
   }
 
-  async function commitBriefEdit(messageIndex: number, message: Message) {
-    if (!editingField || !editingValue.trim() || !message.brief) return;
-    const nextBrief = { ...brief, [editingField]: editingValue.trim() };
-    const nextSources = { ...sources, [editingField]: "user" as FieldSource };
+  async function persistBriefField(messageIndex: number, message: Message, field: keyof Brief, rawValue: string) {
+    if (!rawValue.trim() || !message.brief) return;
+    const value = rawValue.trim();
+    const nextBrief = { ...brief, [field]: value };
+    const nextSources = { ...sources, [field]: "user" as FieldSource };
     const updatedMessage = {
       ...message,
-      brief: { ...message.brief, [editingField]: editingValue.trim() },
-      sources: { ...message.sources, [editingField]: "user" as FieldSource },
+      brief: nextBrief,
+      sources: nextSources,
     };
     setBrief(nextBrief);
     setSources(nextSources);
     setMessages((current) => current.map((item, index) => index === messageIndex ? updatedMessage : item));
-    setEditingField(null);
-    setEditingValue("");
+    setBriefDrafts((current) => ({ ...current, [field]: undefined }));
     if (!conversationId || !writeToken) return;
     try {
       await saveUpdatedMessage({ id: conversationId, token: writeToken }, messageIndex, updatedMessage);
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "需求卡片保存失败，请重试。");
+    }
+  }
+
+  async function commitBriefEdit(messageIndex: number, message: Message) {
+    if (!editingField) return;
+    await persistBriefField(messageIndex, message, editingField, editingValue);
+    setEditingField(null);
+    setEditingValue("");
+  }
+
+  async function generateFromBriefCard(message: Message) {
+    const missing = (Object.keys(fieldLabels) as (keyof Brief)[]).filter((field) => !brief[field]);
+    if (missing.length) {
+      setError("请先填写所有必要信息。");
+      return;
+    }
+    try {
+      const active = await ensureConversation();
+      await generate(brief, active, undefined, { brief, sources, constraints: message.constraints || constraints });
+    } catch (generationError) {
+      setError(generationError instanceof Error ? generationError.message : "暂时无法开始设计，请稍后重试。");
     }
   }
 
@@ -373,10 +403,9 @@ export default function Home() {
       setConstraints(nextConstraints);
 
       if (mode === "collect" && missing.length) {
-        const nextField = missing[0];
         const question: Message = {
           role: "assistant",
-          content: `请问${fieldLabels[nextField]}是什么呢？`,
+          content: "请填写必要信息，我才能帮你设计。",
           brief: nextBrief,
           sources: nextSources,
           constraints: nextConstraints,
@@ -427,7 +456,10 @@ export default function Home() {
     setError("");
     setEditingField(null);
     setEditingValue("");
+    setBriefDrafts({});
   }
+
+  const latestBriefIndex = messages.reduce((latest, message, index) => message.brief ? index : latest, -1);
 
   return (
     <main className="workspace">
@@ -437,7 +469,7 @@ export default function Home() {
             <img src="/zhangwenjie-avatar.png" alt="" />
             <div><h2>对话记录</h2><p>所有访客可查看</p></div>
           </div>
-          <button type="button" onClick={resetConversation} disabled={pending} aria-label="新建对话">＋</button>
+          <button className="new-conversation" type="button" onClick={resetConversation} disabled={pending}>新对话+</button>
         </div>
         <div className="sidebar-list">
           {!conversationList.length ? <p className="empty-list">暂时还没有公开对话。</p> : conversationList.map((conversation) => (
@@ -470,7 +502,7 @@ export default function Home() {
           <div className="contact">
             <h1 aria-live="polite">{loadingConversation ? "正在打开对话…" : pending ? "对方正在输入…" : assistantName}</h1>
           </div>
-          <button className="new-chat" type="button" disabled={pending} onClick={resetConversation} aria-label="新对话" title="新对话">＋</button>
+          <div className="header-spacer" aria-hidden="true" />
         </header>
 
         <div className="conversation" role="log" aria-label="对话记录" aria-live="polite">
@@ -484,9 +516,9 @@ export default function Home() {
                 {message.brief && <section className="brief-card" aria-label="当前设计需求">
                   <div className="brief-card-title">当前设计需求</div>
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
-                    <div className="brief-field" key={field}>
+                    <div className={`brief-field ${!message.brief?.[field] && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
                       <span>{fieldLabels[field]}</span>
-                      {editingField === field && index === messages.length - 1 ? <input
+                      {editingField === field && index === latestBriefIndex ? <input
                         autoFocus
                         value={editingValue}
                         onChange={(event) => setEditingValue(event.target.value)}
@@ -495,16 +527,29 @@ export default function Home() {
                           if (event.key === "Escape") { setEditingField(null); setEditingValue(""); }
                         }}
                         aria-label={`编辑${fieldLabels[field]}`}
-                      /> : <b>{message.brief?.[field] || "待确认"}</b>}
+                      /> : !message.brief?.[field] && index === latestBriefIndex ? <div className="brief-entry">
+                        <input
+                          value={briefDrafts[field] ?? ""}
+                          placeholder={fieldPlaceholders[field]}
+                          onChange={(event) => setBriefDrafts((current) => ({ ...current, [field]: event.target.value }))}
+                          onBlur={() => { const value = briefDrafts[field] || ""; if (value.trim()) void persistBriefField(index, message, field, value); }}
+                          onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void persistBriefField(index, message, field, briefDrafts[field] || ""); } }}
+                          aria-label={`填写${fieldLabels[field]}`}
+                        />
+                        {field === "style" && <div className="style-presets" aria-label="风格预设">
+                          {stylePresets.map((preset) => <button type="button" key={preset} onMouseDown={(event) => event.preventDefault()} onClick={() => { void persistBriefField(index, message, field, preset); }}>{preset}</button>)}
+                        </div>}
+                      </div> : <b>{message.brief?.[field] || "待确认"}</b>}
                       {message.brief?.[field] && editingField !== field && <em className={message.sources?.[field] === "ai" ? "ai" : "user"}>
                         {message.sources?.[field] === "ai" ? "AI 推荐" : "用户提供"}
                       </em>}
-                      {index === messages.length - 1 && !readOnly && !pending && (editingField === field ? <button className="brief-edit confirm" type="button" onClick={() => { void commitBriefEdit(index, message); }} aria-label={`保存${fieldLabels[field]}`}>✓</button> : <button className="brief-edit" type="button" onClick={() => { setEditingField(field); setEditingValue(message.brief?.[field] || ""); }} aria-label={`编辑${fieldLabels[field]}`} title={`编辑${fieldLabels[field]}`}>
+                      {index === latestBriefIndex && !readOnly && !pending && message.brief?.[field] && (editingField === field ? <button className="brief-edit confirm" type="button" onClick={() => { void commitBriefEdit(index, message); }} aria-label={`保存${fieldLabels[field]}`}>✓</button> : <button className="brief-edit" type="button" onClick={() => { setEditingField(field); setEditingValue(message.brief?.[field] || ""); }} aria-label={`编辑${fieldLabels[field]}`} title={`编辑${fieldLabels[field]}`}>
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.8V20h3.2L18.5 8.7l-3.2-3.2L4 16.8Zm13.8-12.3 1.7-1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1l-1.7 1.7-3-3Z" /></svg>
                       </button>)}
                     </div>
                   ))}
                   {message.constraints?.length ? <div className="brief-constraints">约束：{message.constraints.join(" · ")}</div> : null}
+                  {index === latestBriefIndex && !readOnly && <div className="brief-card-footer"><button type="button" disabled={(Object.keys(fieldLabels) as (keyof Brief)[]).some((field) => !brief[field]) || pending} onClick={() => { void generateFromBriefCard(message); }}>生成方案</button></div>}
                 </section>}
                 {message.images?.length ? (
                   <div className="image-gallery">
