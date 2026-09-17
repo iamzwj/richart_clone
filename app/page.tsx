@@ -16,6 +16,7 @@ export default function Home() {
   const [pending, setPending] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const name = process.env.NEXT_PUBLIC_CLONE_NAME || "张文杰";
+  const assistantName = `${name}的设计助理`;
   const isReplyStarted = messages.at(-1)?.role === "assistant";
 
   useEffect(() => {
@@ -88,12 +89,11 @@ export default function Home() {
 
   return (
     <main className="wechat-page">
-      <section className="wechat-window" aria-label="与张文杰设计助理对话">
+      <section className="wechat-window" aria-label={`与${assistantName}对话`}>
         <header className="chat-header">
           <div className="header-spacer" aria-hidden="true" />
           <div className="contact">
-            <h1>{name}设计助理</h1>
-            <p aria-live="polite">{pending ? "对方正在输入…" : "在线"}</p>
+            <h1 aria-live="polite">{pending ? "对方正在输入…" : assistantName}</h1>
           </div>
           <button
             className="new-chat"

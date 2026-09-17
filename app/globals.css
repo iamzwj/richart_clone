@@ -1,38 +1,37 @@
-:root { color-scheme: light; --wechat-green: #07c160; --paper: #f7f7f7; --line: #e5e5e5; --text: #191919; --muted: #8d8d8d; }
+:root { color-scheme: dark; --wechat-green: #07c160; --paper: #151618; --line: #2b2d30; --text: #f0f0f0; --muted: #989a9d; }
 * { box-sizing: border-box; }
-body { margin: 0; background: #eef0f2; color: var(--text); font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
+body { margin: 0; background: radial-gradient(circle at top, #25282c 0, #101113 48%, #0b0c0d 100%); color: var(--text); font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif; }
 button, textarea { font: inherit; }
 button:focus-visible, textarea:focus-visible { outline: 2px solid var(--wechat-green); outline-offset: 2px; }
 .wechat-page { min-height: 100dvh; display: grid; place-items: center; padding: 28px; }
-.wechat-window { width: min(100%, 760px); height: min(860px, calc(100dvh - 56px)); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; background: var(--paper); border: 1px solid #dfe1e3; border-radius: 14px; box-shadow: 0 18px 48px rgba(20, 27, 33, .12); }
-.chat-header { min-height: 66px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 8px 14px; background: #fff; border-bottom: 1px solid var(--line); }
+.wechat-window { width: min(100%, 760px); height: min(860px, calc(100dvh - 56px)); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; background: var(--paper); border: 1px solid #303237; border-radius: 14px; box-shadow: 0 24px 70px rgba(0, 0, 0, .45); }
+.chat-header { min-height: 58px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 8px 14px; background: #1c1d20; border-bottom: 1px solid var(--line); }
 .contact { min-width: 0; text-align: center; }
 .contact h1 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 600; line-height: 1.4; }
-.contact p { min-height: 18px; margin: 1px 0 0; color: var(--muted); font-size: 12px; line-height: 18px; }
-.new-chat { width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: #555; font-size: 22px; line-height: 1; cursor: pointer; }
-.new-chat:hover { background: #f2f2f2; }
+.new-chat { width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: #b9bbbf; font-size: 22px; line-height: 1; cursor: pointer; }
+.new-chat:hover { background: #2a2c30; }
 .new-chat:disabled { cursor: not-allowed; opacity: .4; }
-.conversation { overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 24px 18px 18px; background: #f7f7f7; }
+.conversation { overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 24px 18px 18px; background: #151618; }
 .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 86%; }
 .chat-row.user { align-self: flex-end; flex-direction: row-reverse; }
 .avatar { flex: 0 0 38px; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 5px; background: #272d33; color: #fff; font-size: 14px; font-weight: 600; }
 .avatar img { width: 100%; height: 100%; display: block; border-radius: inherit; object-fit: cover; }
 .user .avatar { background: #74b95a; }
-.bubble { position: relative; max-width: 100%; padding: 10px 13px; border: 1px solid #ededed; border-radius: 5px; background: #fff; color: var(--text); font-size: 15px; line-height: 1.62; white-space: pre-wrap; word-break: break-word; }
+.bubble { position: relative; max-width: 100%; padding: 10px 13px; border: 1px solid #34363a; border-radius: 5px; background: #25272a; color: var(--text); font-size: 15px; line-height: 1.62; white-space: pre-wrap; word-break: break-word; }
 .assistant .bubble::before, .user .bubble::before { content: ""; position: absolute; top: 13px; width: 8px; height: 8px; background: inherit; transform: rotate(45deg); }
-.assistant .bubble::before { left: -5px; border-bottom: 1px solid #ededed; border-left: 1px solid #ededed; }
-.user .bubble { border-color: #95e77a; background: #95ec69; }
-.user .bubble::before { right: -5px; border-top: 1px solid #95e77a; border-right: 1px solid #95e77a; }
+.assistant .bubble::before { left: -5px; border-bottom: 1px solid #34363a; border-left: 1px solid #34363a; }
+.user .bubble { border-color: #65ba4c; background: #76cb59; color: #13210f; }
+.user .bubble::before { right: -5px; border-top: 1px solid #65ba4c; border-right: 1px solid #65ba4c; }
 .typing { display: flex; align-items: center; gap: 5px; min-width: 56px; min-height: 42px; }
 .typing i { width: 5px; height: 5px; border-radius: 50%; background: #a9a9a9; animation: blink .9s infinite alternate; }
 .typing i:nth-child(2) { animation-delay: .18s; }
 .typing i:nth-child(3) { animation-delay: .36s; }
 @keyframes blink { to { opacity: .25; transform: translateY(-2px); } }
-.error { align-self: center; max-width: 90%; margin: 0; padding: 8px 12px; border-radius: 4px; background: #fff0ed; color: #bd3d2d; font-size: 13px; line-height: 1.5; text-align: center; }
-.composer { display: flex; align-items: flex-end; gap: 10px; padding: 12px 16px max(16px, env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid var(--line); }
-.composer textarea { min-width: 0; flex: 1; resize: none; min-height: 40px; max-height: 132px; padding: 9px 10px; border: 1px solid #dedede; border-radius: 5px; color: var(--text); background: #fff; line-height: 1.45; }
-.composer textarea::placeholder { color: #a9a9a9; }
-.composer textarea:disabled { background: #fafafa; }
+.error { align-self: center; max-width: 90%; margin: 0; padding: 8px 12px; border-radius: 4px; background: #442421; color: #ffb4a9; font-size: 13px; line-height: 1.5; text-align: center; }
+.composer { display: flex; align-items: flex-end; gap: 10px; padding: 12px 16px max(16px, env(safe-area-inset-bottom)); background: #1c1d20; border-top: 1px solid var(--line); }
+.composer textarea { min-width: 0; flex: 1; resize: none; min-height: 40px; max-height: 132px; padding: 9px 10px; border: 1px solid #383a3e; border-radius: 5px; color: var(--text); background: #282a2e; line-height: 1.45; }
+.composer textarea::placeholder { color: #85878b; }
+.composer textarea:disabled { background: #222428; }
 .composer button { flex: 0 0 auto; height: 40px; padding: 0 14px; border: 0; border-radius: 5px; background: var(--wechat-green); color: #fff; cursor: pointer; font-size: 14px; }
 .composer button:hover { background: #06ae59; }
 .composer button:disabled { cursor: not-allowed; background: #b7dfc7; }
