@@ -20,12 +20,12 @@ export const emptyDesignBrief: DesignBrief = {
 };
 
 export const fieldLabels: Record<keyof DesignBrief, string> = {
-  title: "主标题 *",
-  subtitle: "副标题",
-  copy: "文案",
-  size: "比例 *",
-  style: "风格 *",
-  supplement: "补充说明",
+  title: "主标题",
+  subtitle: "（选填）副标题",
+  copy: "（选填）文案",
+  size: "比例",
+  style: "风格",
+  supplement: "（选填）补充说明",
 };
 
 const requiredFields: (keyof DesignBrief)[] = ["title", "size", "style"];

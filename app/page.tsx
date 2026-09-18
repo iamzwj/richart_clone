@@ -34,12 +34,12 @@ const welcome: Message = {
   content: "你好，我是张文杰设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。\n\n你可以跟我说你要做什么，例如：设计一个海报，主标题是xxx，副标题是xxx，下面的文案是xxx，尺寸是：9:16，3d卡通风格。",
 };
 const fieldLabels: Record<keyof Brief, string> = {
-  title: "主标题 *",
-  subtitle: "副标题",
-  copy: "文案",
-  size: "比例 *",
-  style: "风格 *",
-  supplement: "补充说明",
+  title: "主标题",
+  subtitle: "（选填）副标题",
+  copy: "（选填）文案",
+  size: "比例",
+  style: "风格",
+  supplement: "（选填）补充说明",
 };
 const requiredBriefFields: (keyof Brief)[] = ["title", "size", "style"];
 
@@ -47,12 +47,12 @@ function missingRequiredBriefFields(brief: Brief): (keyof Brief)[] {
   return requiredBriefFields.filter((field) => !brief[field]);
 }
 const fieldPlaceholders: Record<keyof Brief, string> = {
-  title: "例如：有问题找助理",
-  subtitle: "例如：24 小时在线响应",
-  copy: "例如：说出你的问题，马上获得帮助",
-  supplement: "例如：避免使用人物和渐变背景",
+  title: "填写海报最重要的一句话",
+  subtitle: "填写对主标题的补充说明",
+  copy: "填写需要展示的正文内容",
+  supplement: "填写画面元素、排版或禁用项",
   size: "选择尺寸",
-  style: "输入或选择一种风格",
+  style: "填写或选择画面风格",
 };
 const stylePresets = ["3D 卡通", "写实风", "极简平面", "国潮插画", "轻奢质感"];
 const activeConversationKey = "zhangwenjie-design-active-conversation";
@@ -862,7 +862,7 @@ export default function Home() {
                 }
               }}
               aria-label="设计需求"
-              placeholder={readOnly ? "此对话仅可查看" : mode === "review" ? "告诉我你想修改什么…" : "输入主标题、副标题、文案、尺寸和风格…"}
+              placeholder={readOnly ? "此对话仅可查看" : "比如：你想要做什么"}
               rows={1}
               maxLength={2000}
               disabled={pending || readOnly}
