@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       body.brief && typeof body.brief === "object" ? body.brief as Record<string, unknown> : {},
     );
     const rawReferences = Array.isArray(body.references)
-      ? body.references.filter((item): item is string => typeof item === "string").slice(0, 1)
+      ? body.references.filter((item): item is string => typeof item === "string").slice(0, 4)
       : [];
     const references = (await Promise.all(rawReferences.map((item) => normaliseReference(item, request.nextUrl.origin)))).filter((item): item is string => Boolean(item));
     const modification = typeof body.modification === "string" ? body.modification.trim().slice(0, 2_000) : undefined;

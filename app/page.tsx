@@ -19,6 +19,7 @@ type Message = {
   content: string;
   images?: GeneratedImage[];
   referenceThumbnail?: string;
+  referenceThumbnails?: string[];
   brief?: Brief;
   sources?: Partial<Record<keyof Brief, FieldSource>>;
   constraints?: string[];
@@ -266,7 +267,7 @@ export default function Home() {
   const [sources, setSources] = useState<Partial<Record<keyof Brief, FieldSource>>>({});
   const [constraints, setConstraints] = useState<string[]>([]);
   const [input, setInput] = useState("");
-  const [reference, setReference] = useState<ReferenceImage | null>(null);
+  const [references, setReferences] = useState<ReferenceImage[]>([]);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [writeToken, setWriteToken] = useState<string | null>(null);
@@ -329,7 +330,7 @@ export default function Home() {
         setBrief(emptyBrief);
         setSources({});
         setConstraints([]);
-        setReference(null);
+        setReferences([]);
         setGeneratedImages([]);
         setMode("collect");
         setError("");
@@ -349,7 +350,7 @@ export default function Home() {
       setBrief(latestBrief?.brief || emptyBrief);
       setSources(latestBrief?.sources || {});
       setConstraints(latestBrief?.constraints || []);
-      setReference(null);
+      setReferences([]);
       setGeneratedImages(latestImages);
       setMode("review");
       setError("");
@@ -599,8 +600,8 @@ export default function Home() {
 
     try {
       const activeConstraints = snapshot?.constraints || constraints;
-      const sources = directReferences || (reference
-        ? [reference.dataUrl]
+      const sources = directReferences || (references.length
+        ? references.map((reference) => reference.dataUrl)
         : generatedImages.map((image) => image.url).slice(0, 2));
       const designPrompt = promptOverride || await createDesignPrompt(nextBrief, activeConstraints, modification, sources.length > 0);
       const promptMessage = { ...progressMessage, designPrompt };
@@ -610,13 +611,11 @@ export default function Home() {
         setError(promptError instanceof Error ? promptError.message : "提示词保存失败，请重试。");
       });
 
-      const images = modification && sources.length > 1
-        ? (await Promise.all(sources.map((source) => createImages(nextBrief, [source], modification, 1, activeConstraints, filenamePrompt, designPrompt)))).flat()
-        : await createImages(nextBrief, sources, modification, 2, activeConstraints, filenamePrompt, designPrompt);
+      const images = await createImages(nextBrief, sources, modification, 2, activeConstraints, filenamePrompt, designPrompt);
 
       const result = images.slice(0, 2);
       setGeneratedImages(result);
-      setReference(null);
+      setReferences([]);
       setMode("review");
       const resultMessage: Message = {
         role: "assistant",
@@ -642,18 +641,22 @@ export default function Home() {
     setActivity("reply");
     try {
       const active = await ensureConversation();
-      const selectedReference = reference;
-      const userMessage: Message = { role: "user", content, referenceThumbnail: selectedReference?.thumbnail };
+      const selectedReferences = references;
+      const userMessage: Message = {
+        role: "user",
+        content,
+        referenceThumbnails: selectedReferences.map((reference) => reference.thumbnail),
+      };
       setMessages((current) => [...current, userMessage]);
       void saveMessage(active, userMessage);
       setInput("");
       setError("");
-      setReference(null);
+      setReferences([]);
 
-      if (selectedReference) {
+      if (selectedReferences.length) {
         const editBrief = { ...emptyBrief, size: explicitSize(content) };
         setPending(false);
-        await generate(editBrief, active, content, undefined, [selectedReference.dataUrl], content);
+        await generate(editBrief, active, content, undefined, selectedReferences.map((reference) => reference.dataUrl), content);
         return;
       }
 
@@ -729,13 +732,22 @@ export default function Home() {
     }
   }
 
-  async function selectReference(file?: File) {
-    if (!file) return;
+  async function selectReferences(files?: FileList | File[] | null) {
+    if (!files?.length) return;
     try {
       setError("");
-      const dataUrl = await readImage(file);
-      const thumbnail = await createSquareThumbnail(dataUrl);
-      setReference({ dataUrl, thumbnail, name: file.name });
+      const remaining = Math.max(0, 4 - references.length);
+      const selected = Array.from(files).slice(0, remaining);
+      if (!selected.length) {
+        setError("最多可同时上传 4 张参考图。");
+        return;
+      }
+      const loaded = await Promise.all(selected.map(async (file) => {
+        const dataUrl = await readImage(file);
+        return { dataUrl, thumbnail: await createSquareThumbnail(dataUrl), name: file.name };
+      }));
+      setReferences((current) => [...current, ...loaded].slice(0, 4));
+      if (files.length > selected.length) setError("最多可同时上传 4 张参考图。");
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "参考图读取失败，请重试。");
     }
@@ -751,7 +763,7 @@ export default function Home() {
     setBrief(emptyBrief);
     setSources({});
     setConstraints([]);
-    setReference(null);
+    setReferences([]);
     setGeneratedImages([]);
     setMode("collect");
     setInput("");
@@ -780,7 +792,7 @@ export default function Home() {
       onDrop={(event) => {
         event.preventDefault();
         setDraggingReference(false);
-        if (!readOnly) void selectReference(event.dataTransfer.files?.[0]);
+        if (!readOnly) void selectReferences(event.dataTransfer.files);
       }}
     >
       <aside className="conversation-sidebar" aria-label="公开对话列表">
@@ -817,7 +829,7 @@ export default function Home() {
           {messages.map((message, index) => (
             <article className={`chat-row ${message.role}`} key={`${message.role}-${index}`}>
               <div className="message-content">
-                {message.referenceThumbnail && <button type="button" className="message-reference" onClick={() => setPreview({ url: message.referenceThumbnail || "" })} aria-label="预览参考图"><img src={message.referenceThumbnail} alt="用户上传的参考图" /></button>}
+                {(message.referenceThumbnails || (message.referenceThumbnail ? [message.referenceThumbnail] : [])).length > 0 && <div className="message-references">{(message.referenceThumbnails || (message.referenceThumbnail ? [message.referenceThumbnail] : [])).map((thumbnail, thumbnailIndex) => <button type="button" className="message-reference" key={`${thumbnail}-${thumbnailIndex}`} onClick={() => setPreview({ url: thumbnail })} aria-label={`预览参考图 ${thumbnailIndex + 1}`}><img src={thumbnail} alt={`用户上传的参考图 ${thumbnailIndex + 1}`} /></button>)}</div>}
                 {message.content && (isWelcomeMessage(message) && index === 0 ? <WelcomeMessage /> : <div className="bubble">{message.content}</div>)}
                 {message.brief && !isGenerationProgress(message) && <section className="brief-card" aria-label="提示词助手">
                   <div className="brief-card-title">提示词助手</div>
@@ -902,9 +914,9 @@ export default function Home() {
                     {field === "style" && <div className="brief-field brief-reference">
                       <span>参考图</span>
                       <div className="brief-reference-control">
-                        {reference && <button type="button" className="brief-reference-thumbnail" onClick={() => setPreview({ url: reference.dataUrl })} aria-label="预览参考图"><img src={reference.thumbnail} alt="已上传的参考图" /></button>}
+                        {references.map((reference, referenceIndex) => <button type="button" className="brief-reference-thumbnail" key={reference.dataUrl} onClick={() => setPreview({ url: reference.dataUrl })} aria-label={`预览参考图 ${referenceIndex + 1}`}><img src={reference.thumbnail} alt={`已上传的参考图 ${referenceIndex + 1}`} /></button>)}
                         {!readOnly && <button type="button" className="brief-reference-upload" onClick={() => fileInputRef.current?.click()} disabled={pending}>＋ 上传参考图</button>}
-                        {!reference && readOnly && <b>无参考图</b>}
+                        {!references.length && readOnly && <b>无参考图</b>}
                       </div>
                     </div>}
                     </Fragment>
@@ -955,12 +967,12 @@ export default function Home() {
         </div>
 
         <form onSubmit={send} className={`composer ${draggingReference ? "dragging-reference" : ""}`}>
-          {reference && <div className="reference-preview">
-            <img src={reference.thumbnail} alt="待参考的上传图片" />
-            <button type="button" onClick={() => setReference(null)} aria-label="移除参考图">×</button>
-          </div>}
+          {references.length > 0 && <div className="reference-preview-list">{references.map((reference, referenceIndex) => <div className="reference-preview" key={reference.dataUrl}>
+            <img src={reference.thumbnail} alt={`待参考的上传图片 ${referenceIndex + 1}`} />
+            <button type="button" onClick={() => setReferences((current) => current.filter((item) => item.dataUrl !== reference.dataUrl))} aria-label={`移除参考图 ${referenceIndex + 1}`}>×</button>
+          </div>)}</div>}
           <div className="composer-row">
-            <input ref={fileInputRef} className="file-input" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { void selectReference(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+            <input ref={fileInputRef} className="file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => { void selectReferences(event.target.files); event.currentTarget.value = ""; }} />
             <button className="upload" type="button" disabled={pending || readOnly} onClick={() => fileInputRef.current?.click()} aria-label="上传参考图" title="上传参考图">＋</button>
             <textarea
               ref={composerInputRef}
