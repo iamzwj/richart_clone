@@ -777,8 +777,8 @@ export default function Home() {
               <div className="message-content">
                 {message.referenceThumbnail && <button type="button" className="message-reference" onClick={() => setPreview({ url: message.referenceThumbnail || "" })} aria-label="预览参考图"><img src={message.referenceThumbnail} alt="用户上传的参考图" /></button>}
                 {message.content && (isWelcomeMessage(message) && index === 0 ? <WelcomeMessage /> : <div className="bubble">{message.content}</div>)}
-                {message.brief && !isGenerationProgress(message) && <section className="brief-card" aria-label="当前设计需求">
-                  <div className="brief-card-title">当前设计需求</div>
+                {message.brief && !isGenerationProgress(message) && <section className="brief-card" aria-label="提示词助手">
+                  <div className="brief-card-title">提示词助手</div>
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
                     <div className={`brief-field ${field === "style" ? "style-field" : ""} ${field === "size" && index === latestBriefIndex && !readOnly ? "ratio-picker" : (!message.brief?.[field] || editingField === field) && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
                       <span>{fieldLabels[field]}</span>
