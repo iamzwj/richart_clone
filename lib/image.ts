@@ -144,19 +144,36 @@ function shouldUseFallbackModel(error: unknown): boolean {
   return /模型.*(?:修复|维护|不可用)|model.*(?:repair|maintenance|unavailable)/i.test(message);
 }
 
+function shouldEmbedReference(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return /image upload failed|图片上传失败/i.test(message);
+}
+
+async function embedReferenceImage(source: string): Promise<string> {
+  if (source.startsWith("data:image/")) return source;
+  const response = await fetch(source, { cache: "no-store" });
+  const metadata = extensionFor(response.headers.get("content-type") || "");
+  if (!response.ok || !metadata) throw new Error("参考图暂时无法读取，请重新上传后再试。");
+  const image = Buffer.from(await response.arrayBuffer());
+  if (!image.length || image.length > MAX_REFERENCE_BYTES) {
+    throw new Error("参考图过大，请上传不超过 4MB 的图片。");
+  }
+  return `data:${metadata.contentType};base64,${image.toString("base64")}`;
+}
+
 async function createOne(brief: DesignBrief, references: string[], constraints: string[], modification?: string, prompt?: string): Promise<string[]> {
   if (references.some((reference) => reference.length > MAX_REFERENCE_LENGTH)) {
     throw new Error("参考图过大，请上传不超过 4MB 的图片。");
   }
 
-  const requestImage = async (model: string) => {
+  const requestImage = async (model: string, imageReferences: string[]) => {
     const response = await fetch(`${apiBaseUrl()}/v1/api/generate`, {
       method: "POST",
       headers: apiHeaders(),
       body: JSON.stringify({
         model,
         prompt: prompt || buildDesignPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
-        images: references,
+        images: imageReferences,
         aspectRatio: designResolutionFor(brief.size),
         quality: QUALITY,
         replyType: "json",
@@ -171,12 +188,28 @@ async function createOne(brief: DesignBrief, references: string[], constraints: 
     return urls.length ? [...new Set(urls)] : id ? pollResult(id) : [];
   };
 
-  try {
-    return await requestImage(MODEL);
-  } catch (error) {
-    if (shouldUseFallbackModel(error)) return requestImage(FALLBACK_MODEL);
-    throw error;
+  let model = MODEL;
+  let imageReferences = references;
+  let retriedWithEmbeddedReference = false;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await requestImage(model, imageReferences);
+    } catch (error) {
+      if (imageReferences.length && !retriedWithEmbeddedReference && shouldEmbedReference(error)) {
+        imageReferences = await Promise.all(imageReferences.map(embedReferenceImage));
+        retriedWithEmbeddedReference = true;
+        continue;
+      }
+      if (model === MODEL && shouldUseFallbackModel(error)) {
+        model = FALLBACK_MODEL;
+        continue;
+      }
+      throw error;
+    }
   }
+
+  throw new Error("生图服务暂时不可用，请稍后重试。");
 }
 
 export async function generateDesignImages(
@@ -203,9 +236,8 @@ function extensionFor(contentType: string): { extension: "png" | "jpg" | "webp";
 }
 
 /**
- * GRSai accepts an HTTPS image URL for editing more reliably than a multi-megabyte
- * data URI. Store browser uploads alongside generated files and expose them through
- * the existing random-id image route for the duration of later edit requests.
+ * Store browser uploads alongside generated files so editing can use a stable URL.
+ * If the provider cannot retrieve that URL, generation retries once with image data.
  */
 export async function persistReferenceImage(dataUrl: string): Promise<string | null> {
   const match = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([a-z0-9+/=]+)$/i);
