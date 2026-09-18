@@ -113,6 +113,9 @@ function isSatisfied(message: string): boolean {
 function isDesignIntent(message: string): boolean {
   return /(海报|设计|方案|图片|图像|改图|修改|调整|换成|生成|主标题|副标题|文案|尺寸|风格|配色|背景|人物|补全|二维码|logo|画面)/i.test(message);
 }
+function isContinuationIntent(message: string): boolean {
+  return /^(?:继续|继续生成|继续做|再来|再来一版|换一版|再生成|再做一版)[！!。.]?$/i.test(message.trim());
+}
 function isGenerationProgress(message: Message): boolean {
   return message.role === "assistant" && /(我来帮你做|我来帮你改)/.test(message.content);
 }
@@ -274,12 +277,13 @@ export default function Home() {
       if (token) rememberConversation({ id, token });
       const loadedMessages = applySizeDefault(data.conversation.messages?.length ? data.conversation.messages : [welcome]);
       const latestBrief = [...loadedMessages].reverse().find((message) => message.brief);
+      const latestImages = [...loadedMessages].reverse().find((message) => message.images?.length)?.images || [];
       setMessages(loadedMessages);
       setBrief(latestBrief?.brief || emptyBrief);
       setSources(latestBrief?.sources || {});
       setConstraints(latestBrief?.constraints || []);
       setReference(null);
-      setGeneratedImages([]);
+      setGeneratedImages(latestImages);
       setMode("review");
       setError("");
       setRatioPickerOpen(false);
@@ -583,6 +587,23 @@ export default function Home() {
         const editBrief = { ...emptyBrief, size: explicitSize(content) };
         setPending(false);
         await generate(editBrief, active, content, undefined, [selectedReference.dataUrl], content);
+        return;
+      }
+
+      if (isContinuationIntent(content) && !missingRequiredBriefFields(brief).length) {
+        const previousImages = generatedImages.length
+          ? generatedImages
+          : [...messages].reverse().find((message) => message.images?.length)?.images || [];
+        setGeneratedImages(previousImages);
+        setPending(false);
+        await generate(
+          brief,
+          active,
+          previousImages.length ? "保持当前方案的关键信息，继续生成一版新的设计方案。" : undefined,
+          undefined,
+          previousImages.map((image) => image.url),
+          brief.title,
+        );
         return;
       }
 
