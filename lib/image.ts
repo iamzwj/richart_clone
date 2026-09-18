@@ -9,9 +9,11 @@ export type GeneratedImage = {
 };
 
 const MODEL = "gpt-image-2.5-sunburst";
+const FALLBACK_MODEL = "gpt-image-2.5-flare";
 const QUALITY = "high";
 const IMAGE_SIZE = "2K";
 const MAX_REFERENCE_LENGTH = 6_000_000;
+const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
 const MAX_SAVED_IMAGE_BYTES = 24 * 1024 * 1024;
 const generatedImageDir = process.env.GENERATED_IMAGE_STORE_PATH || join(process.cwd(), "data", "generated");
 
@@ -157,28 +159,33 @@ async function pollResult(id: string): Promise<string[]> {
 export function buildDesignPrompt(brief: DesignBrief, constraints: string[], modification?: string, isReferenceEdit = false): string {
   if (isReferenceEdit) {
     return [
-      "Image editing task: use the supplied image as the source image.",
-      "Preserve the source image's original canvas ratio, composition, subject, and visual style unless the modification explicitly requests a change.",
-      brief.size ? `Requested output size: ${brief.size}; render at 2K.` : "Keep the source image's original size and aspect ratio; render at 2K.",
-      `Modification instructions: ${modification}`,
-      constraints.length ? `Project constraints: ${constraints.join("; ")}.` : "",
-      "No watermark, no extra brand names.",
+      "图片编辑任务：以提供的参考图为基础进行修改。",
+      "除非修改要求明确提出，请保留参考图的原始画布比例、构图、主体和视觉风格。",
+      brief.size ? `输出比例：${brief.size}；以 2K 清晰度生成。` : "保持参考图原有的比例与尺寸，并以 2K 清晰度生成。",
+      `修改要求：${modification}`,
+      constraints.length ? `项目约束：${constraints.join("；")}。` : "",
+      "不要添加水印或无关品牌名称。",
     ].filter(Boolean).join("\n");
   }
   return [
-    "Use case: ads-marketing",
-    "Asset type: Chinese marketing poster",
-    `Primary request: Create a finished poster using the supplied brief.`,
-    `Main title (verbatim): "${brief.title}"`,
-    brief.subtitle ? `Subtitle (verbatim): "${brief.subtitle}"` : "Do not include a subtitle.",
-    brief.copy ? `Body copy (verbatim): "${brief.copy}"` : "Do not include body copy.",
-    brief.supplement ? `Supplemental direction: ${brief.supplement}` : "",
-    `Canvas aspect ratio: ${brief.size}; render at 2K.`,
-    `Style/medium: ${brief.style}.`,
-    "Constraints: Preserve Chinese copy exactly where possible, create clear information hierarchy, keep generous safe margins, no watermark, no extra brand names.",
-    constraints.length ? `Project constraints: ${constraints.join("; ")}.` : "",
-    modification ? `Modification instructions: ${modification}` : "",
+    "用途：营销宣传",
+    "素材类型：中文营销海报",
+    "设计任务：根据以下需求完成一张可直接使用的海报。",
+    `主标题（须原样展示）：“${brief.title}”`,
+    brief.subtitle ? `副标题（须原样展示）：“${brief.subtitle}”` : "不展示副标题。",
+    brief.copy ? `正文文案（须原样展示）：“${brief.copy}”` : "不展示正文文案。",
+    brief.supplement ? `补充要求：${brief.supplement}` : "",
+    `画布比例：${brief.size}；以 2K 清晰度生成。`,
+    `视觉风格：${brief.style}。`,
+    "设计要求：中文文案尽量准确，信息层级清晰，保留充足安全边距；不要添加水印或无关品牌名称。",
+    constraints.length ? `项目约束：${constraints.join("；")}。` : "",
+    modification ? `修改要求：${modification}` : "",
   ].filter(Boolean).join("\n");
+}
+
+function shouldUseFallbackModel(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return /模型.*(?:修复|维护|不可用)|model.*(?:repair|maintenance|unavailable)/i.test(message);
 }
 
 async function createOne(brief: DesignBrief, references: string[], constraints: string[], modification?: string, prompt?: string): Promise<string[]> {
@@ -186,24 +193,32 @@ async function createOne(brief: DesignBrief, references: string[], constraints: 
     throw new Error("参考图过大，请上传不超过 4MB 的图片。");
   }
 
-  const response = await fetch(`${apiBaseUrl()}/v1/draw/completions`, {
-    method: "POST",
-    headers: apiHeaders(),
-    body: JSON.stringify({
-      model: MODEL,
-      prompt: prompt || buildDesignPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
-      size: designResolutionFor(brief.size),
-      imageSize: IMAGE_SIZE,
-      quality: QUALITY,
-      variants: 1,
-      urls: references.length ? references : undefined,
-      shutProgress: false,
-    }),
-    cache: "no-store",
-  });
+  const requestImage = async (model: string) => {
+    const response = await fetch(`${apiBaseUrl()}/v1/draw/completions`, {
+      method: "POST",
+      headers: apiHeaders(),
+      body: JSON.stringify({
+        model,
+        prompt: prompt || buildDesignPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
+        size: designResolutionFor(brief.size),
+        imageSize: IMAGE_SIZE,
+        quality: QUALITY,
+        variants: 1,
+        urls: references.length ? references : undefined,
+        shutProgress: false,
+      }),
+      cache: "no-store",
+    });
+    const result = await readSse(response);
+    return result.urls.length ? result.urls : result.id ? pollResult(result.id) : [];
+  };
 
-  const result = await readSse(response);
-  return result.urls.length ? result.urls : result.id ? pollResult(result.id) : [];
+  try {
+    return await requestImage(MODEL);
+  } catch (error) {
+    if (shouldUseFallbackModel(error)) return requestImage(FALLBACK_MODEL);
+    throw error;
+  }
 }
 
 export async function generateDesignImages(
@@ -227,6 +242,28 @@ function extensionFor(contentType: string): { extension: "png" | "jpg" | "webp";
   if (contentType.includes("image/webp")) return { extension: "webp", contentType: "image/webp" };
   if (contentType.includes("image/jpeg") || contentType.includes("image/jpg")) return { extension: "jpg", contentType: "image/jpeg" };
   return null;
+}
+
+/**
+ * GRSai accepts an HTTPS image URL for editing more reliably than a multi-megabyte
+ * data URI. Store browser uploads alongside generated files and expose them through
+ * the existing random-id image route for the duration of later edit requests.
+ */
+export async function persistReferenceImage(dataUrl: string): Promise<string | null> {
+  const match = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([a-z0-9+/=]+)$/i);
+  if (!match) return null;
+
+  const metadata = extensionFor(match[1]);
+  if (!metadata) return null;
+  const image = Buffer.from(match[2], "base64");
+  if (!image.length || image.length > MAX_REFERENCE_BYTES) {
+    throw new Error("参考图过大，请上传不超过 4MB 的图片。");
+  }
+
+  const id = `${randomUUID()}.${metadata.extension}`;
+  await mkdir(generatedImageDir, { recursive: true });
+  await writeFile(join(generatedImageDir, id), image, { mode: 0o600 });
+  return `/api/design/image?id=${id}`;
 }
 
 async function saveGeneratedImage(source: string, prompt: string): Promise<string> {

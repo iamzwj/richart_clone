@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { missingFields, normaliseBrief } from "@/lib/design";
-import { generateDesignImages, isAllowedImageUrl, readGeneratedImage } from "@/lib/image";
+import { generateDesignImages, isAllowedImageUrl, persistReferenceImage } from "@/lib/image";
 import { isRateLimited } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -9,15 +9,18 @@ function clientAddress(request: NextRequest): string {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
 
-async function normaliseReference(value: string): Promise<string | null> {
-  if (value.startsWith("data:image/") || isAllowedImageUrl(value)) return value;
+async function normaliseReference(value: string, origin: string): Promise<string | null> {
+  if (value.startsWith("data:image/")) {
+    const savedImage = await persistReferenceImage(value);
+    return savedImage ? new URL(savedImage, origin).toString() : null;
+  }
 
-  // Generated images are stored locally so the temporary upstream URL cannot expire.
-  // Convert that local image back to a data URL when it is used as the source for a revision.
+  if (isAllowedImageUrl(value)) return value;
+
+  // Generated images live on this server. Give the provider a public, random-id URL
+  // instead of sending the image bytes inside the JSON request.
   if (value.startsWith("/api/design/image")) {
-    const id = new URL(value, "http://localhost").searchParams.get("id") || "";
-    const image = await readGeneratedImage(id);
-    return image ? `data:${image.contentType};base64,${image.data.toString("base64")}` : null;
+    return new URL(value, origin).toString();
   }
 
   return null;
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
     const rawReferences = Array.isArray(body.references)
       ? body.references.filter((item): item is string => typeof item === "string").slice(0, 1)
       : [];
-    const references = (await Promise.all(rawReferences.map(normaliseReference))).filter((item): item is string => Boolean(item));
+    const references = (await Promise.all(rawReferences.map((item) => normaliseReference(item, request.nextUrl.origin)))).filter((item): item is string => Boolean(item));
     const modification = typeof body.modification === "string" ? body.modification.trim().slice(0, 2_000) : undefined;
     const isReferenceEdit = references.length > 0 && Boolean(modification);
     if (!isReferenceEdit && missingFields(brief).length) {

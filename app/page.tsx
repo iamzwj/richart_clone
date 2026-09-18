@@ -821,7 +821,7 @@ export default function Home() {
                 </section>}
                 {message.designPrompt && <section className="design-prompt-card" aria-label="生图提示词">
                   <div className="design-prompt-header">
-                    <span>生图 Prompt</span>
+                    <span>生图提示词</span>
                     {!readOnly && editingPromptIndex !== index && <button className="prompt-edit" type="button" onClick={() => { setEditingPromptIndex(index); setEditingPromptValue(message.designPrompt || ""); }} aria-label="编辑生图提示词" title="编辑生图提示词">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.8V20h3.2L18.5 8.7l-3.2-3.2L4 16.8Zm13.8-12.3 1.7-1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1l-1.7 1.7-3-3Z" /></svg>
                     </button>}

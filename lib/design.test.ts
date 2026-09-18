@@ -35,7 +35,7 @@ test("builds an editable prompt with optional supplemental direction", () => {
     supplement: "避免人物和渐变背景",
   }), []);
 
-  assert.match(prompt, /Main title \(verbatim\): "秋日市集"/);
-  assert.match(prompt, /Supplemental direction: 避免人物和渐变背景/);
-  assert.match(prompt, /Do not include a subtitle/);
+  assert.match(prompt, /主标题（须原样展示）：“秋日市集”/);
+  assert.match(prompt, /补充要求：避免人物和渐变背景/);
+  assert.match(prompt, /不展示副标题/);
 });
