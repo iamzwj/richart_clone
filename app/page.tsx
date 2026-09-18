@@ -284,15 +284,12 @@ export default function Home() {
   const [editingPromptValue, setEditingPromptValue] = useState("");
   const [briefDrafts, setBriefDrafts] = useState<Partial<Brief>>({});
   const [draggingReference, setDraggingReference] = useState(false);
-  const [activity, setActivity] = useState<"reply" | "design" | null>(null);
   const [focusComposerRequest, setFocusComposerRequest] = useState(0);
   const [ratioPickerOpen, setRatioPickerOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const name = process.env.NEXT_PUBLIC_CLONE_NAME || "张文杰";
-  const assistantName = `${name}的设计助理`;
 
   useEffect(() => {
     const element = endRef.current;
@@ -588,7 +585,6 @@ export default function Home() {
     promptOverride?: string,
   ) {
     setPending(true);
-    setActivity("design");
     setError("");
     const progressMessage: Message = {
       role: "assistant",
@@ -628,7 +624,6 @@ export default function Home() {
       setError(generationError instanceof Error ? generationError.message : "生图失败，请稍后重试。");
     } finally {
       setPending(false);
-      setActivity(null);
     }
   }
 
@@ -638,7 +633,6 @@ export default function Home() {
     if (!content || pending || readOnly) return;
 
     setPending(true);
-    setActivity("reply");
     try {
       const active = await ensureConversation();
       const selectedReferences = references;
@@ -728,7 +722,6 @@ export default function Home() {
       setError(requestError instanceof Error ? requestError.message : "暂时无法读取需求，请稍后重试。");
     } finally {
       setPending(false);
-      setActivity(null);
     }
   }
 
@@ -771,7 +764,6 @@ export default function Home() {
     setEditingField(null);
     setEditingValue("");
     setBriefDrafts({});
-    setActivity(null);
     setRatioPickerOpen(false);
     setFocusComposerRequest((current) => current + 1);
   }
@@ -818,13 +810,7 @@ export default function Home() {
           ))}
         </div>
       </aside>
-      <section className="wechat-window" aria-label={`与${assistantName}对话`}>
-        <header className="chat-header">
-          <div className="contact">
-            <h1 aria-live="polite">{pending ? <><span>{activity === "design" ? "对方正在帮你设计" : "对方正在输入"}</span><span className="status-ellipsis" aria-hidden="true"><i>·</i><i>·</i><i>·</i></span></> : assistantName}</h1>
-          </div>
-        </header>
-
+      <section className="wechat-window" aria-label="设计对话">
         <div className="conversation" role="log" aria-label="对话记录" aria-live="polite">
           {messages.map((message, index) => (
             <article className={`chat-row ${message.role}`} key={`${message.role}-${index}`}>
@@ -959,9 +945,6 @@ export default function Home() {
               </div>
             </article>
           ))}
-          {pending && activity === "design" && <article className="chat-row assistant generation-status" aria-label="我正在帮你设计">
-            <div className="bubble"><span>我正在帮你设计</span><span className="status-ellipsis" aria-hidden="true"><i>·</i><i>·</i><i>·</i></span></div>
-          </article>}
           {error && <p className="error" role="alert">{error}</p>}
           <div ref={endRef} />
         </div>
@@ -973,7 +956,6 @@ export default function Home() {
           </div>)}</div>}
           <div className="composer-row">
             <input ref={fileInputRef} className="file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={(event) => { void selectReferences(event.target.files); event.currentTarget.value = ""; }} />
-            <button className="upload" type="button" disabled={pending || readOnly} onClick={() => fileInputRef.current?.click()} aria-label="上传参考图" title="上传参考图">＋</button>
             <textarea
               ref={composerInputRef}
               value={input}
@@ -985,12 +967,17 @@ export default function Home() {
                 }
               }}
               aria-label="设计需求"
-              placeholder={readOnly ? "此对话仅可查看" : ""}
+              placeholder={readOnly ? "此对话仅可查看" : "告诉我你想做什么…"}
               rows={1}
               maxLength={2000}
               disabled={pending || readOnly}
             />
-            <button className="send" type="submit" disabled={pending || readOnly || !input.trim()}>发送</button>
+            <div className="composer-actions">
+              <button className="upload" type="button" disabled={pending || readOnly} onClick={() => fileInputRef.current?.click()} aria-label="上传参考图" title="上传参考图">＋</button>
+              <button className="send" type="submit" disabled={pending || readOnly || !input.trim()} aria-label="发送">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0-5.5 5.5M12 5l5.5 5.5" /></svg>
+              </button>
+            </div>
           </div>
         </form>
       </section>
