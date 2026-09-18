@@ -132,11 +132,6 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .image-gallery figcaption { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 11px; color: var(--muted); font-size: 12px; }
 .image-gallery a, .preview-card a { color: #b9ed81; text-decoration: none; }
 .image-gallery a:hover, .preview-card a:hover { color: #fff; text-decoration: underline; }
-.typing { display: flex; align-items: center; gap: 5px; min-width: 62px; min-height: 44px; padding: 13px 15px; }
-.typing i { width: 5px; height: 5px; border-radius: 50%; background: #e9e6df; animation: blink .9s infinite alternate; }
-.typing i:nth-child(2) { animation-delay: .18s; }
-.typing i:nth-child(3) { animation-delay: .36s; }
-@keyframes blink { to { opacity: .2; transform: translateY(-3px); } }
 .error { align-self: center; max-width: 90%; margin: 0; padding: 9px 13px; border: 1px solid rgba(255,130,112,.28); border-radius: 10px; background: rgba(102, 39, 31, .42); color: #ffc1b7; font-size: 13px; line-height: 1.5; text-align: center; }
 .composer { position: relative; padding: 13px clamp(16px, 2.6vw, 26px) max(18px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: #1c1f1e; }
 .composer.dragging-reference::before { content: "松开即可上传参考图"; position: absolute; z-index: 2; inset: 7px 12px; display: grid; place-items: center; border: 1px dashed rgba(255,128,86,.9); border-radius: 13px; background: rgba(42,26,22,.94); color: #ffd1c1; font-size: 14px; font-weight: 620; pointer-events: none; }

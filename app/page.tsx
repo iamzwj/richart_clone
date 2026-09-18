@@ -875,10 +875,6 @@ export default function Home() {
               </div>
             </article>
           ))}
-          {pending && <article className="chat-row assistant typing-row" aria-label="对方正在输入">
-            <div className="avatar" aria-hidden="true"><img src="/zhangwenjie-avatar.png" alt="" /></div>
-            <div className="bubble typing"><i /><i /><i /></div>
-          </article>}
           {error && <p className="error" role="alert">{error}</p>}
           <div ref={endRef} />
         </div>
