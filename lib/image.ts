@@ -9,7 +9,7 @@ export type GeneratedImage = {
 };
 
 const MODEL = "gpt-image-2.5-sunburst";
-const FALLBACK_MODEL = "gpt-image-2.5-flare";
+const FALLBACK_MODEL = "gpt-image-2.5";
 const QUALITY = "high";
 const MAX_REFERENCE_LENGTH = 6_000_000;
 const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
