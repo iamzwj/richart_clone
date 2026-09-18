@@ -133,10 +133,10 @@ function isContinuationIntent(message: string): boolean {
 function isGenerationProgress(message: Message): boolean {
   return message.role === "assistant" && /(我来帮你做|我来帮你改)/.test(message.content);
 }
-function readImage(file: File): Promise<string> {
-  if (!file.type.startsWith("image/")) return Promise.reject(new Error("请上传图片文件。"));
-  if (file.size > 4 * 1024 * 1024) return Promise.reject(new Error("参考图不能超过 4MB。"));
+const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
+const COMPRESSED_REFERENCE_TARGET_BYTES = Math.floor(MAX_REFERENCE_BYTES * 0.88);
 
+function readDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error("参考图读取失败，请重试。"));
@@ -145,6 +145,48 @@ function readImage(file: File): Promise<string> {
       : reject(new Error("参考图读取失败，请重试。"));
     reader.readAsDataURL(file);
   });
+}
+
+function dataUrlByteLength(dataUrl: string): number {
+  const encoded = dataUrl.slice(dataUrl.indexOf(",") + 1);
+  const padding = encoded.endsWith("==") ? 2 : encoded.endsWith("=") ? 1 : 0;
+  return Math.floor((encoded.length * 3) / 4) - padding;
+}
+
+function compressReferenceImage(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      if (!context) return reject(new Error("参考图压缩失败，请重试。"));
+      const presets = [
+        { longestSide: 2560, quality: 0.88 },
+        { longestSide: 2048, quality: 0.82 },
+        { longestSide: 1600, quality: 0.76 },
+        { longestSide: 1280, quality: 0.7 },
+      ];
+      for (const preset of presets) {
+        const scale = Math.min(1, preset.longestSide / Math.max(image.naturalWidth, image.naturalHeight));
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL("image/jpeg", preset.quality);
+        if (dataUrlByteLength(compressed) <= COMPRESSED_REFERENCE_TARGET_BYTES) return resolve(compressed);
+      }
+      reject(new Error("参考图尺寸过大，无法自动压缩。"));
+    };
+    image.onerror = () => reject(new Error("参考图读取失败，请重试。"));
+    image.src = dataUrl;
+  });
+}
+
+async function readImage(file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) return Promise.reject(new Error("请上传图片文件。"));
+  const dataUrl = await readDataUrl(file);
+  return file.size > MAX_REFERENCE_BYTES ? compressReferenceImage(dataUrl) : dataUrl;
 }
 
 function createSquareThumbnail(dataUrl: string): Promise<string> {
