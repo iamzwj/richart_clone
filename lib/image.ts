@@ -151,14 +151,25 @@ function shouldEmbedReference(error: unknown): boolean {
 
 async function embedReferenceImage(source: string): Promise<string> {
   if (source.startsWith("data:image/")) return source;
-  const response = await fetch(source, { cache: "no-store" });
-  const metadata = extensionFor(response.headers.get("content-type") || "");
-  if (!response.ok || !metadata) throw new Error("参考图暂时无法读取，请重新上传后再试。");
-  const image = Buffer.from(await response.arrayBuffer());
-  if (!image.length || image.length > MAX_REFERENCE_BYTES) {
-    throw new Error("参考图过大，请上传不超过 4MB 的图片。");
+  const url = new URL(source);
+  if (url.pathname === "/api/design/image") {
+    const saved = await readGeneratedImage(url.searchParams.get("id") || "");
+    if (!saved) throw new Error("参考图暂时无法读取，请重新上传后再试。");
+    if (saved.data.length > MAX_REFERENCE_BYTES) throw new Error("参考图过大，请上传不超过 4MB 的图片。");
+    return `data:${saved.contentType};base64,${saved.data.toString("base64")}`;
   }
-  return `data:${metadata.contentType};base64,${image.toString("base64")}`;
+
+  try {
+    const response = await fetch(source, { cache: "no-store" });
+    const metadata = extensionFor(response.headers.get("content-type") || "");
+    if (!response.ok || !metadata) throw new Error("参考图暂时无法读取，请重新上传后再试。");
+    const image = Buffer.from(await response.arrayBuffer());
+    if (!image.length || image.length > MAX_REFERENCE_BYTES) throw new Error("参考图过大，请上传不超过 4MB 的图片。");
+    return `data:${metadata.contentType};base64,${image.toString("base64")}`;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("参考图")) throw error;
+    throw new Error("参考图暂时无法读取，请重新上传后再试。");
+  }
 }
 
 async function createOne(brief: DesignBrief, references: string[], constraints: string[], modification?: string, prompt?: string): Promise<string[]> {
@@ -167,19 +178,24 @@ async function createOne(brief: DesignBrief, references: string[], constraints: 
   }
 
   const requestImage = async (model: string, imageReferences: string[]) => {
-    const response = await fetch(`${apiBaseUrl()}/v1/api/generate`, {
-      method: "POST",
-      headers: apiHeaders(),
-      body: JSON.stringify({
-        model,
-        prompt: prompt || buildDesignPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
-        images: imageReferences,
-        aspectRatio: designResolutionFor(brief.size),
-        quality: QUALITY,
-        replyType: "json",
-      }),
-      cache: "no-store",
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${apiBaseUrl()}/v1/api/generate`, {
+        method: "POST",
+        headers: apiHeaders(),
+        body: JSON.stringify({
+          model,
+          prompt: prompt || buildDesignPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
+          images: imageReferences,
+          aspectRatio: designResolutionFor(brief.size),
+          quality: QUALITY,
+          replyType: "json",
+        }),
+        cache: "no-store",
+      });
+    } catch {
+      throw new Error("生图服务连接失败，请稍后重试。");
+    }
     const result = await response.json().catch(() => ({}));
     const message = errorMessage(result) || (!response.ok && "生图服务暂时不可用，请稍后重试。");
     if (message) throw new Error(message);

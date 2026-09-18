@@ -875,6 +875,10 @@ export default function Home() {
               </div>
             </article>
           ))}
+          {pending && activity === "design" && <article className="chat-row assistant generation-status" aria-label="对方正在帮你设计中">
+            <div className="avatar" aria-hidden="true"><img src="/zhangwenjie-avatar.png" alt="" /></div>
+            <div className="bubble"><span>对方正在帮你设计中</span><span className="status-ellipsis" aria-hidden="true"><i>·</i><i>·</i><i>·</i></span></div>
+          </article>}
           {error && <p className="error" role="alert">{error}</p>}
           <div ref={endRef} />
         </div>
