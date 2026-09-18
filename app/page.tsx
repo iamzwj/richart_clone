@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import { DEFAULT_DESIGN_SIZE, DESIGN_SIZE_OPTIONS } from "@/lib/design-sizes";
 
 type Brief = {
@@ -31,7 +31,7 @@ type ActiveConversation = { id: string; token: string };
 const emptyBrief: Brief = { title: "", subtitle: "", copy: "", supplement: "", size: DEFAULT_DESIGN_SIZE, style: "" };
 const welcome: Message = {
   role: "assistant",
-  content: "你好，我是张文杰设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。\n\n你可以跟我说你要做什么，例如：设计一个海报，主标题是xxx，副标题是xxx，下面的文案是xxx，尺寸是：9:16，3d卡通风格。",
+  content: "你好，我是张文杰的设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。\n\n你可以跟我说你要做什么，例如：设计一个海报，主标题是xxx，副标题是xxx，下面的文案是xxx，尺寸是：9:16，3d卡通风格。",
   brief: emptyBrief,
 };
 const fieldLabels: Record<keyof Brief, string> = {
@@ -255,7 +255,7 @@ function updateConstraints(message: string, current: string[]): string[] {
 
 function WelcomeMessage() {
   return <div className="welcome-bubble">
-    <p className="welcome-greeting">你好，我是<strong>张文杰设计助理</strong>。</p>
+    <p className="welcome-greeting">你好，我是<strong>张文杰的设计助理</strong>。</p>
     <p className="welcome-intro">你有什么设计需求可以先跟我说，我可以尝试帮你设计。</p>
   </div>;
 }
@@ -822,7 +822,8 @@ export default function Home() {
                 {message.brief && !isGenerationProgress(message) && <section className="brief-card" aria-label="提示词助手">
                   <div className="brief-card-title">提示词助手</div>
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
-                    <div className={`brief-field ${field === "style" ? "style-field" : ""} ${field === "size" && index === latestBriefIndex && !readOnly ? "ratio-picker" : (!message.brief?.[field] || editingField === field) && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
+                    <Fragment key={field}>
+                    <div className={`brief-field ${field === "style" ? "style-field" : ""} ${field === "size" && index === latestBriefIndex && !readOnly ? "ratio-picker" : (!message.brief?.[field] || editingField === field) && index === latestBriefIndex ? "brief-field-input" : ""}`}>
                       <span>{fieldLabels[field]}</span>
                       {field === "size" && index === latestBriefIndex && !readOnly ? <div className="ratio-picker-control">
                         <button
@@ -898,6 +899,15 @@ export default function Home() {
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.8V20h3.2L18.5 8.7l-3.2-3.2L4 16.8Zm13.8-12.3 1.7-1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1l-1.7 1.7-3-3Z" /></svg>
                       </button>)}
                     </div>
+                    {field === "style" && <div className="brief-field brief-reference">
+                      <span>参考图</span>
+                      <div className="brief-reference-control">
+                        {reference && <button type="button" className="brief-reference-thumbnail" onClick={() => setPreview({ url: reference.dataUrl })} aria-label="预览参考图"><img src={reference.thumbnail} alt="已上传的参考图" /></button>}
+                        {!readOnly && <button type="button" className="brief-reference-upload" onClick={() => fileInputRef.current?.click()} disabled={pending}>＋ 上传参考图</button>}
+                        {!reference && readOnly && <b>无参考图</b>}
+                      </div>
+                    </div>}
+                    </Fragment>
                   ))}
                   {message.constraints?.length ? <div className="brief-constraints">约束：{message.constraints.join(" · ")}</div> : null}
                   {index === latestBriefIndex && !readOnly && <div className="brief-card-footer"><button type="button" disabled={missingRequiredBriefFields(brief).length > 0 || pending} onClick={() => { void generateFromBriefCard(message); }}>生成方案</button></div>}
