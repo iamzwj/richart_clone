@@ -739,7 +739,7 @@ export default function Home() {
                 {message.brief && !isGenerationProgress(message) && <section className="brief-card" aria-label="当前设计需求">
                   <div className="brief-card-title">当前设计需求</div>
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (
-                    <div className={`brief-field ${field === "size" && index === latestBriefIndex && !readOnly ? "ratio-picker" : !message.brief?.[field] && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
+                    <div className={`brief-field ${field === "style" ? "style-field" : ""} ${field === "size" && index === latestBriefIndex && !readOnly ? "ratio-picker" : (!message.brief?.[field] || editingField === field) && index === latestBriefIndex ? "brief-field-input" : ""}`} key={field}>
                       <span>{fieldLabels[field]}</span>
                       {field === "size" && index === latestBriefIndex && !readOnly ? <div className="ratio-picker-control">
                         <button
@@ -770,7 +770,21 @@ export default function Home() {
                             </button>;
                           })}
                         </div>}
-                      </div> : editingField === field && index === latestBriefIndex ? <input
+                      </div> : editingField === field && index === latestBriefIndex ? field === "style" ? <div className="brief-entry">
+                        <input
+                          autoFocus
+                          value={editingValue}
+                          onChange={(event) => setEditingValue(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") void commitBriefEdit(index, message);
+                            if (event.key === "Escape") { setEditingField(null); setEditingValue(""); }
+                          }}
+                          aria-label={`编辑${fieldLabels[field]}`}
+                        />
+                        <div className="style-presets" aria-label="风格预设">
+                          {stylePresets.map((preset) => <button type="button" key={preset} className={editingValue === preset ? "selected" : ""} onMouseDown={(event) => event.preventDefault()} onClick={() => setEditingValue(preset)}>{preset}</button>)}
+                        </div>
+                      </div> : <input
                         autoFocus
                         value={editingValue}
                         onChange={(event) => setEditingValue(event.target.value)}
@@ -791,6 +805,11 @@ export default function Home() {
                         {field === "style" && <div className="style-presets" aria-label="风格预设">
                           {stylePresets.map((preset) => <button type="button" key={preset} onMouseDown={(event) => event.preventDefault()} onClick={() => { void persistBriefField(index, message, field, preset); }}>{preset}</button>)}
                         </div>}
+                      </div> : field === "style" ? <div className="style-summary">
+                        <b>{message.brief?.[field] || "待确认"}</b>
+                        <div className="style-presets" aria-label="已选风格与预设">
+                          {stylePresets.map((preset) => <span key={preset} className={message.brief?.[field] === preset ? "selected" : ""}>{preset}</span>)}
+                        </div>
                       </div> : <b>{message.brief?.[field] || "待确认"}</b>}
                       {field !== "size" && index === latestBriefIndex && !readOnly && !pending && message.brief?.[field] && (editingField === field ? <button className="brief-edit confirm" type="button" onClick={() => { void commitBriefEdit(index, message); }} aria-label={`保存${fieldLabels[field]}`}>✓</button> : <button className="brief-edit" type="button" onClick={() => { setEditingField(field); setEditingValue(message.brief?.[field] || ""); }} aria-label={`编辑${fieldLabels[field]}`} title={`编辑${fieldLabels[field]}`}>
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16.8V20h3.2L18.5 8.7l-3.2-3.2L4 16.8Zm13.8-12.3 1.7-1.7a1.5 1.5 0 0 1 2.1 0l.9.9a1.5 1.5 0 0 1 0 2.1l-1.7 1.7-3-3Z" /></svg>

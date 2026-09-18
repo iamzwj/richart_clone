@@ -90,6 +90,8 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .ratio-icon { height: 19px; max-width: 32px; display: block; border: 1.5px solid currentColor; border-radius: 3px; }
 .ratio-option b { overflow: visible; color: currentColor; font-size: 11px; font-weight: 650; line-height: 1; white-space: nowrap; }
 .brief-entry { min-width: 0; }
+.style-summary { min-width: 0; }
+.style-summary > b { display: block; }
 .brief-entry input, .brief-entry select { min-height: 33px; padding: 7px 9px; border-color: rgba(239,236,226,.16); border-radius: 8px; background: #292c2b; font-size: 12px; }
 .brief-entry input:focus, .brief-entry select:focus { border-color: rgba(255,128,86,.7); }
 .brief-entry input::placeholder { color: #777c77; }
@@ -103,6 +105,8 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .style-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .style-presets button { padding: 5px 7px; border: 1px solid rgba(239,236,226,.12); border-radius: 6px; background: rgba(255,255,255,.035); color: #b8bbb5; cursor: pointer; font-size: 11px; line-height: 1; }
 .style-presets button:hover { border-color: rgba(255,128,86,.48); background: rgba(255,128,86,.1); color: #ffd0bf; }
+.style-presets button.selected, .style-presets span.selected { border-color: rgba(255,128,86,.72); background: rgba(255,128,86,.15); color: #ffc0ab; }
+.style-presets span { padding: 5px 7px; border: 1px solid rgba(239,236,226,.12); border-radius: 6px; background: rgba(255,255,255,.035); color: #8f938e; font-size: 11px; line-height: 1; }
 .brief-card-footer { display: flex; justify-content: center; padding: 16px 14px 17px; }
 .brief-card-footer button { min-width: 156px; min-height: 46px; padding: 0 22px; border: 0; border-radius: 12px; background: var(--wechat-green); box-shadow: 0 8px 18px rgba(7,193,96,.18); color: #fff; cursor: pointer; font-size: 15px; font-weight: 650; }
 .brief-card-footer button:disabled { cursor: not-allowed; opacity: .42; }
