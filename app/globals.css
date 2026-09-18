@@ -48,7 +48,7 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .user .bubble { border-color: rgba(7,193,96,.28); border-radius: 15px 6px 15px 15px; background: linear-gradient(135deg, #a8e96c, #75d55a); color: #172514; }
 .message-reference { display: block; width: 68px; height: 68px; margin: 0 0 8px auto; padding: 0; overflow: hidden; border: 1px solid rgba(255,128,86,.55); border-radius: 12px; background: #242726; cursor: zoom-in; }
 .message-reference img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.welcome-bubble { width: min(100%, 535px); padding: 20px 21px 18px; border: 1px solid rgba(239,236,226,.13); border-radius: 6px 18px 18px 18px; background: linear-gradient(135deg, #282b2a, #222523); box-shadow: 0 12px 28px rgba(0,0,0,.16); }
+.welcome-bubble { width: min(100%, 420px); padding: 20px 21px 18px; border: 1px solid rgba(239,236,226,.13); border-radius: 6px 18px 18px 18px; background: linear-gradient(135deg, #282b2a, #222523); box-shadow: 0 12px 28px rgba(0,0,0,.16); }
 .welcome-bubble p { margin: 0; }
 .welcome-greeting { color: #f6f2eb; font-size: 20px; font-weight: 460; letter-spacing: .01em; line-height: 1.42; }
 .welcome-greeting strong { color: #ffaf93; font-weight: 650; }
