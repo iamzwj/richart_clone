@@ -9,9 +9,8 @@ export type GeneratedImage = {
 };
 
 const MODEL = "gpt-image-2.5-sunburst";
-const FALLBACK_MODEL = "gpt-image-2.5-flare";
+const FALLBACK_MODEL = "gpt-image-2";
 const QUALITY = "high";
-const IMAGE_SIZE = "2K";
 const MAX_REFERENCE_LENGTH = 6_000_000;
 const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
 const MAX_SAVED_IMAGE_BYTES = 24 * 1024 * 1024;
@@ -96,59 +95,16 @@ function errorMessage(value: unknown): string | undefined {
   return failed && typeof record.message === "string" ? record.message : undefined;
 }
 
-async function readSse(response: Response): Promise<{ urls: string[]; id?: string }> {
-  if (!response.ok) throw new Error(`生图服务请求失败（${response.status}）。`);
-  if (!response.body) throw new Error("生图服务没有返回结果。");
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let urls: string[] = [];
-  let id: string | undefined;
-
-  const consume = (raw: string) => {
-    const data = raw.trim().replace(/^data:\s*/, "");
-    if (!data || data === "[DONE]") return;
-    try {
-      const event = JSON.parse(data);
-      const eventError = errorMessage(event);
-      if (eventError) throw new Error(eventError);
-      urls = [...urls, ...imageUrlCandidates(event)];
-      id ||= taskId(event);
-    } catch (error) {
-      if (error instanceof SyntaxError) return;
-      throw error;
-    }
-  };
-
-  while (true) {
-    const { done, value } = await reader.read();
-    buffer += decoder.decode(value, { stream: !done });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) consume(line);
-
-    if (done) {
-      consume(buffer);
-      break;
-    }
-  }
-
-  return { urls: [...new Set(urls)], id };
-}
-
 async function pollResult(id: string): Promise<string[]> {
   for (let attempt = 0; attempt < 30; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 2_000));
-    const response = await fetch(`${apiBaseUrl()}/v1/draw/result`, {
-      method: "POST",
+    const response = await fetch(`${apiBaseUrl()}/v1/api/result?id=${encodeURIComponent(id)}`, {
+      method: "GET",
       headers: apiHeaders(),
-      body: JSON.stringify({ taskId: id, id }),
       cache: "no-store",
     });
     const data = await response.json().catch(() => ({}));
-    const message = errorMessage(data);
+    const message = errorMessage(data) || (!response.ok && "生图服务暂时不可用，请稍后重试。");
     if (message) throw new Error(message);
     const urls = imageUrlCandidates(data);
     if (urls.length) return [...new Set(urls)];
@@ -194,23 +150,25 @@ async function createOne(brief: DesignBrief, references: string[], constraints: 
   }
 
   const requestImage = async (model: string) => {
-    const response = await fetch(`${apiBaseUrl()}/v1/draw/completions`, {
+    const response = await fetch(`${apiBaseUrl()}/v1/api/generate`, {
       method: "POST",
       headers: apiHeaders(),
       body: JSON.stringify({
         model,
         prompt: prompt || buildDesignPrompt(brief, constraints, modification, references.length > 0 && Boolean(modification)),
-        size: designResolutionFor(brief.size),
-        imageSize: IMAGE_SIZE,
+        images: references,
+        aspectRatio: designResolutionFor(brief.size),
         quality: QUALITY,
-        variants: 1,
-        urls: references.length ? references : undefined,
-        shutProgress: false,
+        replyType: "json",
       }),
       cache: "no-store",
     });
-    const result = await readSse(response);
-    return result.urls.length ? result.urls : result.id ? pollResult(result.id) : [];
+    const result = await response.json().catch(() => ({}));
+    const message = errorMessage(result) || (!response.ok && "生图服务暂时不可用，请稍后重试。");
+    if (message) throw new Error(message);
+    const urls = imageUrlCandidates(result);
+    const id = taskId(result);
+    return urls.length ? [...new Set(urls)] : id ? pollResult(id) : [];
   };
 
   try {
