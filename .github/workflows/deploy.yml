@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      reset_conversation_data:
+        description: Clear all saved conversations and generated images during this deployment
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: richart-clone-production
@@ -97,12 +103,14 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
           REPOSITORY_URL: git@github.com:${{ github.repository }}.git
+          RESET_CONVERSATION_DATA: ${{ github.event.inputs.reset_conversation_data || 'false' }}
         run: |
           ssh -i "$HOME/.ssh/richart-clone-deploy" -p "$DEPLOY_PORT" -o BatchMode=yes \
-            "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$RELEASE_SHA' '$REPOSITORY_URL'" <<'EOF'
+            "$DEPLOY_USER@$DEPLOY_HOST" "bash -s -- '$RELEASE_SHA' '$REPOSITORY_URL' '$RESET_CONVERSATION_DATA'" <<'EOF'
           set -euo pipefail
           release_sha="$1"
           repository_url="$2"
+          reset_conversation_data="$3"
           app_dir=/opt/richart-clone
           source_dir="$app_dir/source"
           source_key=/home/richart/.ssh/richart_clone_source
@@ -111,6 +119,11 @@ jobs:
 
           sudo mkdir -p "$release_dir" "$source_dir"
           sudo install -d -o richart -g richart -m 700 /opt/richart-clone/data
+          if [ "$reset_conversation_data" = "true" ]; then
+            sudo rm -f /opt/richart-clone/data/conversations.json
+            sudo rm -rf /opt/richart-clone/data/generated
+            sudo install -d -o richart -g richart -m 700 /opt/richart-clone/data/generated
+          fi
           sudo chown -R richart:richart "$source_dir"
 
           # The server uses its own read-only GitHub deploy key. Fetching the

@@ -76,6 +76,15 @@ function rememberConversation(active: ActiveConversation) {
   window.localStorage.setItem(activeConversationKey, active.id);
 }
 
+function forgetConversation(id: string) {
+  const owned = ownedConversationTokens();
+  delete owned[id];
+  window.localStorage.setItem(ownedConversationKey, JSON.stringify(owned));
+  if (window.localStorage.getItem(activeConversationKey) === id) {
+    window.localStorage.removeItem(activeConversationKey);
+  }
+}
+
 function ownedConversationToken(id: string): string | null {
   return ownedConversationTokens()[id] || null;
 }
@@ -270,6 +279,23 @@ export default function Home() {
     try {
       const response = await fetch(`/api/conversations/${id}`, { cache: "no-store" });
       const data = await response.json().catch(() => ({})) as { conversation?: { messages?: Message[] } };
+      if (response.status === 404) {
+        forgetConversation(id);
+        setConversationId(null);
+        setWriteToken(null);
+        setReadOnly(false);
+        setMessages([welcome]);
+        setBrief(emptyBrief);
+        setSources({});
+        setConstraints([]);
+        setReference(null);
+        setGeneratedImages([]);
+        setMode("collect");
+        setError("");
+        setRatioPickerOpen(false);
+        void refreshConversationList();
+        return;
+      }
       if (!response.ok || !data.conversation) throw new Error("无法读取对话记录。");
       setConversationId(id);
       setWriteToken(token);
@@ -718,11 +744,7 @@ export default function Home() {
     >
       <aside className="conversation-sidebar" aria-label="公开对话列表">
         <div className="sidebar-header">
-          <div className="sidebar-title">
-            <img src="/zhangwenjie-avatar.png" alt="" />
-            <div><h2>对话记录</h2><p>所有访客可查看</p></div>
-          </div>
-          <button className="new-conversation" type="button" onClick={resetConversation} disabled={pending}>新对话 +</button>
+          <button className="new-conversation" type="button" onClick={resetConversation} disabled={pending}>新对话</button>
         </div>
         <div className="sidebar-list">
           {!conversationList.length ? <p className="empty-list">暂时还没有公开对话。</p> : conversationList.map((conversation) => (

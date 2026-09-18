@@ -10,7 +10,7 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .conversation-sidebar, .wechat-window { min-height: min(820px, calc(100dvh - 64px)); height: min(820px, calc(100dvh - 64px)); border: 1px solid var(--line); background: rgba(24, 26, 26, .9); box-shadow: 0 30px 90px rgba(0, 0, 0, .36); backdrop-filter: blur(18px); }
 .conversation-sidebar { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; }
 .conversation-sidebar::after { content: ""; position: absolute; top: 0; right: 18px; left: 18px; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,128,86,.78), transparent); opacity: .8; }
-.sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 25px 20px 20px; border-bottom: 1px solid var(--line); }
+.sidebar-header { display: flex; align-items: center; justify-content: flex-start; padding: 25px 20px 20px; border-bottom: 1px solid var(--line); }
 .sidebar-title { display: flex; min-width: 0; align-items: center; gap: 11px; }
 .sidebar-title img { width: 34px; height: 34px; border: 1px solid rgba(255, 128, 86, .68); border-radius: 11px; object-fit: cover; }
 .sidebar-header h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: .02em; }
