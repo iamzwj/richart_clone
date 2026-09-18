@@ -744,6 +744,10 @@ export default function Home() {
     >
       <aside className="conversation-sidebar" aria-label="公开对话列表">
         <div className="sidebar-header">
+          <div className="sidebar-title">
+            <img src="/zhangwenjie-avatar.png" alt="" />
+            <div><h2>对话记录</h2><p>所有访客可查看</p></div>
+          </div>
           <button className="new-conversation" type="button" onClick={resetConversation} disabled={pending}>新对话</button>
         </div>
         <div className="sidebar-list">
@@ -763,19 +767,14 @@ export default function Home() {
       </aside>
       <section className="wechat-window" aria-label={`与${assistantName}对话`}>
         <header className="chat-header">
-          <div className="header-identity" aria-hidden="true"><img src="/zhangwenjie-avatar.png" alt="" /></div>
           <div className="contact">
             <h1 aria-live="polite">{pending ? <><span>{activity === "design" ? "对方正在帮你设计" : "对方正在输入"}</span><span className="status-ellipsis" aria-hidden="true"><i>·</i><i>·</i><i>·</i></span></> : assistantName}</h1>
           </div>
-          <div className="header-spacer" aria-hidden="true" />
         </header>
 
         <div className="conversation" role="log" aria-label="对话记录" aria-live="polite">
           {messages.map((message, index) => (
             <article className={`chat-row ${message.role}`} key={`${message.role}-${index}`}>
-              <div className="avatar" aria-hidden="true">
-                {message.role === "assistant" ? <img src="/zhangwenjie-avatar.png" alt="" /> : "我"}
-              </div>
               <div className="message-content">
                 {message.referenceThumbnail && <button type="button" className="message-reference" onClick={() => setPreview({ url: message.referenceThumbnail || "" })} aria-label="预览参考图"><img src={message.referenceThumbnail} alt="用户上传的参考图" /></button>}
                 {message.content && (message === welcome ? <WelcomeMessage /> : <div className="bubble">{message.content}</div>)}
@@ -898,7 +897,6 @@ export default function Home() {
             </article>
           ))}
           {pending && activity === "design" && <article className="chat-row assistant generation-status" aria-label="我正在帮你设计">
-            <div className="avatar" aria-hidden="true"><img src="/zhangwenjie-avatar.png" alt="" /></div>
             <div className="bubble"><span>我正在帮你设计</span><span className="status-ellipsis" aria-hidden="true"><i>·</i><i>·</i><i>·</i></span></div>
           </article>}
           {error && <p className="error" role="alert">{error}</p>}
