@@ -921,7 +921,7 @@ export default function Home() {
                 }
               }}
               aria-label="设计需求"
-              placeholder={readOnly ? "此对话仅可查看" : "比如：你想要做什么"}
+              placeholder={readOnly ? "此对话仅可查看" : ""}
               rows={1}
               maxLength={2000}
               disabled={pending || readOnly}
