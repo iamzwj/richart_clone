@@ -32,6 +32,7 @@ const emptyBrief: Brief = { title: "", subtitle: "", copy: "", supplement: "", s
 const welcome: Message = {
   role: "assistant",
   content: "你好，我是张文杰设计助理。你有什么设计需求可以先跟我说，我可以尝试帮你设计。\n\n你可以跟我说你要做什么，例如：设计一个海报，主标题是xxx，副标题是xxx，下面的文案是xxx，尺寸是：9:16，3d卡通风格。",
+  brief: emptyBrief,
 };
 const fieldLabels: Record<keyof Brief, string> = {
   title: "主标题",
@@ -45,6 +46,10 @@ const requiredBriefFields: (keyof Brief)[] = ["title", "size", "style"];
 
 function missingRequiredBriefFields(brief: Brief): (keyof Brief)[] {
   return requiredBriefFields.filter((field) => !brief[field]);
+}
+
+function isWelcomeMessage(message?: Message): boolean {
+  return message?.role === "assistant" && message.content === welcome.content;
 }
 const fieldPlaceholders: Record<keyof Brief, string> = {
   title: "填写海报最重要的一句话",
@@ -210,12 +215,6 @@ function WelcomeMessage() {
   return <div className="welcome-bubble">
     <p className="welcome-greeting">你好，我是<strong>张文杰设计助理</strong>。</p>
     <p className="welcome-intro">你有什么设计需求可以先跟我说，我可以尝试帮你设计。</p>
-    <div className="welcome-example">
-      <span>例如这样描述</span>
-      <p>设计一个海报</p>
-      <p>主标题：xxx　副标题：xxx</p>
-      <p>文案：xxx　尺寸：9:16　风格：3D 卡通</p>
-    </div>
   </div>;
 }
 
@@ -402,7 +401,7 @@ export default function Home() {
     setBriefDrafts((current) => ({ ...current, [field]: undefined }));
     if (field === "size") setRatioPickerOpen(false);
     if (!conversationId || !writeToken) return;
-    const storedMessageIndex = messages[0] === welcome ? messageIndex - 1 : messageIndex;
+    const storedMessageIndex = isWelcomeMessage(messages[0]) ? messageIndex - 1 : messageIndex;
     if (storedMessageIndex < 0) return;
     try {
       await saveUpdatedMessage({ id: conversationId, token: writeToken }, storedMessageIndex, updatedMessage);
@@ -424,7 +423,7 @@ export default function Home() {
     const updatedMessage = { ...message, designPrompt };
     setMessages((current) => current.map((item, index) => index === messageIndex ? updatedMessage : item));
     if (!conversationId || !writeToken) return updatedMessage;
-    const storedMessageIndex = messages[0] === welcome ? messageIndex - 1 : messageIndex;
+    const storedMessageIndex = isWelcomeMessage(messages[0]) ? messageIndex - 1 : messageIndex;
     if (storedMessageIndex < 0) return updatedMessage;
     try {
       await saveUpdatedMessage({ id: conversationId, token: writeToken }, storedMessageIndex, updatedMessage);
@@ -564,7 +563,7 @@ export default function Home() {
       const designPrompt = promptOverride || await createDesignPrompt(nextBrief, activeConstraints, modification, sources.length > 0);
       const promptMessage = { ...progressMessage, designPrompt };
       setMessages((current) => current.map((message, index) => index === current.length - 1 ? promptMessage : message));
-      const storedPromptIndex = messages[0] === welcome ? messages.length - 1 : messages.length;
+      const storedPromptIndex = isWelcomeMessage(messages[0]) ? messages.length - 1 : messages.length;
       void saveUpdatedMessage(active, storedPromptIndex, promptMessage).catch((promptError) => {
         setError(promptError instanceof Error ? promptError.message : "提示词保存失败，请重试。");
       });
@@ -777,7 +776,7 @@ export default function Home() {
             <article className={`chat-row ${message.role}`} key={`${message.role}-${index}`}>
               <div className="message-content">
                 {message.referenceThumbnail && <button type="button" className="message-reference" onClick={() => setPreview({ url: message.referenceThumbnail || "" })} aria-label="预览参考图"><img src={message.referenceThumbnail} alt="用户上传的参考图" /></button>}
-                {message.content && (message === welcome ? <WelcomeMessage /> : <div className="bubble">{message.content}</div>)}
+                {message.content && (isWelcomeMessage(message) && index === 0 ? <WelcomeMessage /> : <div className="bubble">{message.content}</div>)}
                 {message.brief && !isGenerationProgress(message) && <section className="brief-card" aria-label="当前设计需求">
                   <div className="brief-card-title">当前设计需求</div>
                   {(Object.keys(fieldLabels) as (keyof Brief)[]).map((field) => (

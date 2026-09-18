@@ -53,10 +53,6 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .welcome-greeting { color: #f6f2eb; font-size: 20px; font-weight: 460; letter-spacing: .01em; line-height: 1.42; }
 .welcome-greeting strong { color: #ffaf93; font-weight: 650; }
 .welcome-intro { margin-top: 7px !important; color: #c8c8c2; font-size: 15px; line-height: 1.65; }
-.welcome-example { margin-top: 17px; padding: 13px 14px 12px; border-left: 2px solid var(--ember); border-radius: 0 10px 10px 0; background: rgba(0,0,0,.17); }
-.welcome-example > span { display: block; margin-bottom: 7px; color: #f0a589; font-size: 12px; font-weight: 620; letter-spacing: .04em; }
-.welcome-example p { color: #babcb7; font-size: 13px; line-height: 1.72; }
-.welcome-example p:first-of-type { color: #eeece6; font-size: 15px; font-weight: 570; }
 .brief-card { width: min(100%, 440px); margin-top: 10px; overflow: hidden; border: 1px solid rgba(239,236,226,.12); border-radius: 14px; background: #1e2120; box-shadow: 0 11px 24px rgba(0,0,0,.17); }
 .brief-card:has(.ratio-grid) { overflow: visible; }
 .brief-card-title { display: flex; align-items: center; min-height: 43px; padding: 10px 14px; border-bottom: 1px solid var(--line); color: #f5f1e9; font-size: 13px; font-weight: 620; }
