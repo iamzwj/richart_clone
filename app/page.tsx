@@ -52,7 +52,7 @@ function isWelcomeMessage(message?: Message): boolean {
   return message?.role === "assistant" && message.content === welcome.content;
 }
 const fieldPlaceholders: Record<keyof Brief, string> = {
-  title: "填写海报最重要的一句话",
+  title: "主标题是啥",
   subtitle: "（选填）填写对主标题的补充说明",
   copy: "（选填）填写需要展示的正文内容",
   supplement: "（选填）填写画面元素、排版或禁用项",
