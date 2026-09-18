@@ -75,7 +75,7 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .ratio-picker > span { margin: 0; color: #8b8e89; font-size: 12px; font-weight: 400; }
 .ratio-picker-control { position: relative; width: max-content; min-width: 0; }
 .ratio-trigger { width: 112px; min-height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 5px 8px; border: 1px solid rgba(239,236,226,.16); border-radius: 8px; background: rgba(255,255,255,.045); color: #d0ccd6; cursor: pointer; }
-.ratio-trigger:hover:not(:disabled) { border-color: rgba(153,112,255,.65); background: rgba(126,86,218,.1); }
+.ratio-trigger:hover:not(:disabled) { border-color: rgba(255,128,86,.65); background: rgba(255,128,86,.1); }
 .ratio-trigger:disabled { cursor: wait; opacity: .6; }
 .ratio-trigger > span { display: inline-flex; align-items: center; gap: 7px; }
 .ratio-trigger .ratio-icon { height: 17px; max-width: 27px; border-width: 1.5px; }
@@ -84,8 +84,8 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .ratio-chevron.open { transform: rotate(180deg); }
 .ratio-grid { position: absolute; z-index: 3; top: calc(100% + 7px); left: 0; width: min(360px, calc(100vw - 92px)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; padding: 9px; border: 1px solid rgba(239,236,226,.14); border-radius: 12px; background: #242625; box-shadow: 0 16px 30px rgba(0,0,0,.34); }
 .ratio-option { min-height: 58px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 5px 4px; border: 1px solid rgba(239,236,226,.12); border-radius: 10px; background: rgba(255,255,255,.045); color: #ccc8d3; cursor: pointer; transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease; }
-.ratio-option:hover:not(:disabled) { border-color: rgba(153,112,255,.65); background: rgba(126,86,218,.13); transform: translateY(-1px); }
-.ratio-option.selected { border-color: #8e64ff; background: rgba(107,72,198,.24); box-shadow: inset 0 0 0 1px rgba(166,136,255,.24); color: #a987ff; }
+.ratio-option:hover:not(:disabled) { border-color: rgba(255,128,86,.65); background: rgba(255,128,86,.13); transform: translateY(-1px); }
+.ratio-option.selected { border-color: var(--ember); background: rgba(255,128,86,.2); box-shadow: inset 0 0 0 1px rgba(255,174,145,.26); color: #ffb097; }
 .ratio-option:disabled { cursor: wait; opacity: .6; }
 .ratio-icon { height: 19px; max-width: 32px; display: block; border: 1.5px solid currentColor; border-radius: 3px; }
 .ratio-option b { overflow: visible; color: currentColor; font-size: 11px; font-weight: 650; line-height: 1; white-space: nowrap; }
