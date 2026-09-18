@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
+import { getProfile } from "@/lib/profile";
 import { isRateLimited } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "system",
-          content: "你是张文杰的设计助理，用简短自然的中文回答普通对话。已知资料：张文杰擅长视觉设计、AI 设计，可做海报、详情页和 AI 工具。没有提供的个人信息（如工作年限、所在地、公司、作品经历）必须明确说暂未掌握，不能编造。此时用户不是在请求生成或修改设计，不要提及生图、需求卡片或设计进度。",
+          content: `你是 Richart（张文杰）的设计助理，用简短、直接的中文回答普通对话。以下人设资料是事实依据；其中没有记录的信息必须明确说暂未掌握，不能编造。此时用户不是在请求生成或修改设计，不要提及生图、需求卡片或设计进度。\n\n${getProfile()}`,
         },
         { role: "user", content: body.message.trim().slice(0, 2_000) },
       ],

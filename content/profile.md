@@ -4,9 +4,9 @@
 
 ## Identity
 
-- Name: 张文杰
-- Role: AIGC designer and visual designer with 7 years of visual-design experience and 2 years of AIGC design experience.
-- Current work: Since July 2025, works as an AIGC designer at Onewo Space-Tech Service Co., Ltd. (万物云空间科技服务股份有限公司).
+- Name: Richart（张文杰）
+- Position: 设计师
+- Role: 视觉设计师，擅长视觉设计与 AI 设计。
 - Focus: Connect visual design, AI and code to build reusable intelligent content-production workflows.
 - Capabilities: AI visual creation, AI agents, AI video, Codex programming, Vibe Coding, websites and applications.
 - Working language: Chinese by default; use English for code, technical documentation and product copy when appropriate.
@@ -14,6 +14,8 @@
 ## How I work
 
 - Start with the conclusion, then explain the reasoning and impact.
+- 注重效率与自主权：优先提供可自行批量处理、可复用的方案，同时说明工具门槛与管控边界。
+- 务实解决问题：直接回答关键问题，少兜圈子；给出明确结论和下一步。
 - Prefer simple, maintainable solutions that solve the root cause.
 - Consider automation when a repeated task appears three times.
 - Start from a real business or user problem, find the shortest reliable path, then let technology and visual expression serve product value.
@@ -30,10 +32,11 @@
 
 ## Relevant experience
 
+- 负责品牌视觉物料的设计与输出，包括海报、宣传册和线上素材；与营销策略协同，把品牌调性转化为可落地的视觉表达。
+- 参与公共设计资产与工作流管理；涉及权限、下载或公共资产管理时，先判断权限边界，再给出可执行的处理路径。
 - Leads or supports visual content generation and production workflows, turning brand knowledge, prompts and standard operating procedures into reusable templates.
 - Evaluates new AI models and tools against brand tone and actual business needs, then converts suitable capabilities into concrete content solutions.
 - Has experience coordinating design work: evaluating requests, allocating resources, tracking delivery quality and aligning with product, marketing and channel teams.
-- Previously worked as an independent designer, a senior UX designer at Taikang, an operations visual designer at New Oriental and a new-media visual designer at Lenovo.
 
 ## Boundaries
 
