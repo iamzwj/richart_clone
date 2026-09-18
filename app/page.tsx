@@ -35,11 +35,11 @@ const welcome: Message = {
 };
 const fieldLabels: Record<keyof Brief, string> = {
   title: "主标题",
-  subtitle: "（选填）副标题",
-  copy: "（选填）文案",
+  subtitle: "副标题",
+  copy: "文案",
   size: "比例",
   style: "风格",
-  supplement: "（选填）补充说明",
+  supplement: "补充说明",
 };
 const requiredBriefFields: (keyof Brief)[] = ["title", "size", "style"];
 
@@ -48,9 +48,9 @@ function missingRequiredBriefFields(brief: Brief): (keyof Brief)[] {
 }
 const fieldPlaceholders: Record<keyof Brief, string> = {
   title: "填写海报最重要的一句话",
-  subtitle: "填写对主标题的补充说明",
-  copy: "填写需要展示的正文内容",
-  supplement: "填写画面元素、排版或禁用项",
+  subtitle: "（选填）填写对主标题的补充说明",
+  copy: "（选填）填写需要展示的正文内容",
+  supplement: "（选填）填写画面元素、排版或禁用项",
   size: "选择尺寸",
   style: "填写或选择画面风格",
 };
