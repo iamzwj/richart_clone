@@ -6,10 +6,8 @@ body::before { content: ""; position: fixed; z-index: -1; inset: 0; opacity: .18
 button, textarea { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; }
-.workspace { width: min(1180px, 100%); min-height: 100dvh; display: grid; grid-template-columns: 292px minmax(0, 1fr); align-items: center; gap: 18px; margin: 0 auto; padding: clamp(18px, 4vw, 48px); }
-.conversation-sidebar, .wechat-window { min-height: min(820px, calc(100dvh - 64px)); height: min(820px, calc(100dvh - 64px)); }
-.conversation-sidebar { border: 1px solid var(--line); background: rgba(24, 26, 26, .9); box-shadow: 0 30px 90px rgba(0, 0, 0, .36); backdrop-filter: blur(18px); }
-.conversation-sidebar { position: relative; display: flex; flex-direction: column; overflow: hidden; border-radius: 22px; }
+.workspace { min-height: 100dvh; position: relative; }
+.conversation-sidebar { position: fixed; z-index: 4; top: 18px; bottom: 18px; left: 18px; width: 246px; min-height: 0; height: auto; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: rgba(24, 26, 26, .9); box-shadow: 0 30px 90px rgba(0, 0, 0, .36); backdrop-filter: blur(18px); }
 .conversation-sidebar::after { content: ""; position: absolute; top: 0; right: 18px; left: 18px; height: 2px; background: linear-gradient(90deg, transparent, rgba(255,128,86,.78), transparent); opacity: .8; }
 .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 25px 20px 20px; border-bottom: 1px solid var(--line); }
 .sidebar-title { display: flex; min-width: 0; align-items: center; gap: 11px; }
@@ -27,7 +25,7 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .conversation-item.active::before { background: var(--ember); box-shadow: 0 0 12px rgba(255,128,86,.58); }
 .conversation-item strong { overflow: hidden; color: #e8e7e1; font-size: 13px; font-weight: 570; letter-spacing: .01em; text-overflow: ellipsis; white-space: nowrap; }
 .empty-list { margin: 20px 12px; color: var(--faint); font-size: 13px; line-height: 1.7; }
-.wechat-window { width: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; }
+.wechat-window { position: relative; width: auto; min-width: 0; min-height: 100dvh; height: 100dvh; margin-left: 280px; display: grid; grid-template-rows: minmax(0, 1fr); }
 .chat-header { min-height: 72px; display: flex; align-items: center; justify-content: center; padding: 13px 20px; border-bottom: 1px solid var(--line); background: rgba(28, 31, 30, .74); }
 .contact { min-width: 0; text-align: center; }
 .contact h1 { margin: 0; overflow: hidden; color: #f5f2ec; font-size: 16px; font-weight: 630; letter-spacing: .015em; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
@@ -39,8 +37,8 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .new-chat { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; justify-self: end; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #b7b9b4; cursor: pointer; font-size: 23px; font-weight: 300; line-height: 1; transition: color .18s ease, background .18s ease; }
 .new-chat:hover { background: rgba(255,255,255,.075); color: #fff; }
 .new-chat:disabled { cursor: not-allowed; opacity: .4; }
-.conversation { overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 22px clamp(19px, 3vw, 34px) 24px; background: transparent; }
-.chat-row { width: min(83%, 610px); align-self: flex-start; }
+.conversation { overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 30px max(30px, calc((100% - 850px) / 2)) 220px; background: transparent; }
+.chat-row { width: min(83%, 680px); align-self: flex-start; }
 .chat-row.user { align-self: flex-end; }
 .message-content { min-width: 0; max-width: 100%; }
 .chat-row.assistant .message-content { width: 100%; }
@@ -135,7 +133,7 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .image-gallery a, .preview-card a { color: #b9ed81; text-decoration: none; }
 .image-gallery a:hover, .preview-card a:hover { color: #fff; text-decoration: underline; }
 .error { align-self: center; max-width: 90%; margin: 0; padding: 9px 13px; border: 1px solid rgba(255,130,112,.28); border-radius: 10px; background: rgba(102, 39, 31, .42); color: #ffc1b7; font-size: 13px; line-height: 1.5; text-align: center; }
-.composer { position: relative; width: min(100%, 740px); margin: 0 auto clamp(18px, 3vw, 30px); padding: 14px; border: 1px solid rgba(239,236,226,.15); border-radius: 20px; background: rgba(28,31,30,.92); box-shadow: 0 16px 42px rgba(0,0,0,.24); backdrop-filter: blur(18px); }
+.composer { position: absolute; z-index: 5; right: max(30px, calc((100% - 850px) / 2)); bottom: 16px; left: max(30px, calc((100% - 850px) / 2)); padding: 14px; border: 1px solid rgba(239,236,226,.15); border-radius: 20px; background: rgba(28,31,30,.92); box-shadow: 0 16px 42px rgba(0,0,0,.24); backdrop-filter: blur(18px); }
 .composer.dragging-reference::before { content: "松开即可上传参考图"; position: absolute; z-index: 2; inset: 7px; display: grid; place-items: center; border: 1px dashed rgba(255,128,86,.9); border-radius: 14px; background: rgba(42,26,22,.94); color: #ffd1c1; font-size: 14px; font-weight: 620; pointer-events: none; }
 .composer-row { display: flex; flex-direction: column; gap: 10px; }
 .composer textarea { width: 100%; min-width: 0; resize: none; min-height: 116px; max-height: 220px; padding: 9px 10px; border: 0; border-radius: 10px; outline: 0; color: var(--text); background: transparent; font-size: 15px; line-height: 1.5; }
@@ -161,6 +159,6 @@ button:focus-visible, textarea:focus-visible, a:focus-visible { outline: 2px sol
 .preview-card img { display: block; max-width: 100%; max-height: calc(90dvh - 104px); border-radius: 8px; object-fit: contain; }
 .close-preview { position: absolute; top: 9px; right: 10px; width: 29px; height: 29px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.06); color: #fff; cursor: pointer; font-size: 20px; }
 .close-preview:hover { background: rgba(255,255,255,.14); }
-@media (max-width: 840px) { .workspace { grid-template-columns: 244px minmax(0, 1fr); gap: 13px; padding: 18px; } .conversation-sidebar, .wechat-window { min-height: calc(100dvh - 36px); height: calc(100dvh - 36px); } .chat-row { width: 88%; } }
-@media (max-width: 690px) { .workspace { display: block; padding: 0; } .conversation-sidebar { display: none; } .wechat-window { width: 100%; min-height: 100dvh; height: 100dvh; } .conversation { padding: 22px 14px 18px; } .chat-row { width: 94%; } .bubble { padding: 11px 13px; font-size: 15px; } .image-gallery { max-width: 320px; } .ratio-grid { gap: 6px; } .ratio-option { min-height: 54px; border-radius: 9px; } .ratio-icon { height: 17px; border-width: 1.5px; } .composer { width: calc(100% - 24px); margin-bottom: max(12px, env(safe-area-inset-bottom)); padding: 10px 11px; border-radius: 17px; } .composer textarea { min-height: 92px; } .upload { width: 34px; height: 34px; } .send { width: 36px; height: 36px; } }
+@media (max-width: 840px) { .conversation-sidebar { left: 14px; width: 230px; } .wechat-window { margin-left: 258px; } .conversation { padding-right: 24px; padding-left: 24px; } .composer { right: 24px; left: 24px; } .chat-row { width: 88%; } }
+@media (max-width: 690px) { .conversation-sidebar { display: none; } .wechat-window { width: 100%; min-height: 100dvh; height: 100dvh; margin-left: 0; } .conversation { padding: 22px 14px 190px; } .chat-row { width: 94%; } .bubble { padding: 11px 13px; font-size: 15px; } .image-gallery { max-width: 320px; } .ratio-grid { gap: 6px; } .ratio-option { min-height: 54px; border-radius: 9px; } .ratio-icon { height: 17px; border-width: 1.5px; } .composer { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; padding: 10px 11px; border-radius: 17px; } .composer textarea { min-height: 92px; } .upload { width: 34px; height: 34px; } .send { width: 36px; height: 36px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0s !important; animation-duration: 0s !important; } }
