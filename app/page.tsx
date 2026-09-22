@@ -26,7 +26,7 @@ type Message = {
   designPrompt?: string;
 };
 type ReferenceImage = { dataUrl: string; thumbnail: string; name: string };
-type ConversationSummary = { id: string; title: string; createdAt: string; updatedAt: string; messageCount: number };
+type ConversationSummary = { id: string; title: string; createdAt: string; updatedAt: string; messageCount: number; previewImage?: string };
 type ActiveConversation = { id: string; token: string };
 
 const emptyBrief: Brief = { title: "", subtitle: "", copy: "", supplement: "", size: DEFAULT_DESIGN_SIZE, style: "" };
@@ -805,6 +805,7 @@ export default function Home() {
                 void openConversation(conversation.id, ownedConversationToken(conversation.id));
               }}
             >
+              {conversation.previewImage && <img className="conversation-preview" src={displayImageUrl(conversation.previewImage)} alt="对话生成图缩略图" />}
               <strong>{conversation.title}</strong>
             </button>
           ))}

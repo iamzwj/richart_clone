@@ -16,6 +16,7 @@ export type ConversationMessage = {
   content: string;
   images?: ConversationImage[];
   referenceThumbnail?: string;
+  referenceThumbnails?: string[];
   brief?: ConversationBrief;
   sources?: Partial<Record<keyof ConversationBrief, "user" | "ai">>;
   constraints?: string[];
@@ -31,6 +32,7 @@ type StoredConversation = {
 };
 export type ConversationSummary = Pick<StoredConversation, "id" | "title" | "createdAt" | "updatedAt"> & {
   messageCount: number;
+  previewImage?: string;
 };
 export type PublicConversation = Omit<StoredConversation, "token">;
 
@@ -61,6 +63,9 @@ function cleanMessage(value: unknown): ConversationMessage | null {
   const referenceThumbnail = typeof source.referenceThumbnail === "string" && /^data:image\/(?:png|jpeg|webp);base64,/.test(source.referenceThumbnail) && source.referenceThumbnail.length <= 100_000
     ? source.referenceThumbnail
     : undefined;
+  const referenceThumbnails = Array.isArray(source.referenceThumbnails)
+    ? source.referenceThumbnails.filter((thumbnail): thumbnail is string => typeof thumbnail === "string" && /^data:image\/(?:png|jpeg|webp);base64,/.test(thumbnail) && thumbnail.length <= 100_000).slice(0, 4)
+    : undefined;
   const rawBrief = source.brief && typeof source.brief === "object" ? source.brief as Record<string, unknown> : undefined;
   const brief = rawBrief ? {
     title: cleanText(rawBrief.title, 1_000),
@@ -79,8 +84,8 @@ function cleanMessage(value: unknown): ConversationMessage | null {
     : undefined;
   const designPrompt = cleanText(source.designPrompt, 8_000) || undefined;
 
-  if (!content && !images?.length && !referenceThumbnail && !brief && !designPrompt) return null;
-  return { role: source.role, content, images, referenceThumbnail, brief, sources, constraints, designPrompt };
+  if (!content && !images?.length && !referenceThumbnail && !referenceThumbnails?.length && !brief && !designPrompt) return null;
+  return { role: source.role, content, images, referenceThumbnail, referenceThumbnails, brief, sources, constraints, designPrompt };
 }
 
 async function readStore(): Promise<StoredConversation[]> {
@@ -115,13 +120,10 @@ export async function listConversations(): Promise<ConversationSummary[]> {
   const conversations = await readStore();
   return conversations
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .map(({ id, title, createdAt, updatedAt, messages }) => ({
-      id,
-      title,
-      createdAt,
-      updatedAt,
-      messageCount: messages.length,
-    }));
+    .map(({ id, title, createdAt, updatedAt, messages }) => {
+      const previewImage = [...messages].reverse().find((message) => message.images?.length)?.images?.[0]?.url;
+      return { id, title, createdAt, updatedAt, messageCount: messages.length, previewImage };
+    });
 }
 
 export async function createConversation(): Promise<{ conversation: PublicConversation; token: string }> {
