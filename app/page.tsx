@@ -286,20 +286,21 @@ export default function Home() {
   const [draggingReference, setDraggingReference] = useState(false);
   const [focusComposerRequest, setFocusComposerRequest] = useState(0);
   const [ratioPickerOpen, setRatioPickerOpen] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const followLatestRef = useRef(true);
 
   useEffect(() => {
-    const element = endRef.current;
-    if (!element || typeof element.scrollIntoView !== "function") return;
-    try {
-      element.scrollIntoView({ behavior: "smooth", block: "end" });
-    } catch {
-      element.scrollIntoView();
-    }
+    if (!followLatestRef.current) return;
+    const element = conversationRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
   }, [messages, pending, error]);
+
+  function updateFollowLatest(element: HTMLElement) {
+    followLatestRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 80;
+  }
 
   useEffect(() => {
     if (!focusComposerRequest || readOnly || pending || loadingConversation) return;
@@ -314,6 +315,7 @@ export default function Home() {
   }
 
   async function openConversation(id: string, token: string | null) {
+    followLatestRef.current = true;
     setLoadingConversation(true);
     try {
       const response = await fetch(`/api/conversations/${id}`, { cache: "no-store" });
@@ -584,6 +586,7 @@ export default function Home() {
     filenamePrompt?: string,
     promptOverride?: string,
   ) {
+    followLatestRef.current = true;
     setPending(true);
     setError("");
     const progressMessage: Message = {
@@ -632,6 +635,7 @@ export default function Home() {
     const content = input.trim();
     if (!content || pending || readOnly) return;
 
+    followLatestRef.current = true;
     setPending(true);
     try {
       const active = await ensureConversation();
@@ -748,6 +752,7 @@ export default function Home() {
 
   function resetConversation() {
     if (pending) return;
+    followLatestRef.current = true;
     window.localStorage.removeItem(activeConversationKey);
     setConversationId(null);
     setWriteToken(null);
@@ -812,7 +817,7 @@ export default function Home() {
         </div>
       </aside>
       <section className="wechat-window" aria-label="设计对话">
-        <div className="conversation" role="log" aria-label="对话记录" aria-live="polite">
+        <div className="conversation" ref={conversationRef} role="log" aria-label="对话记录" aria-live="polite" onScroll={(event) => updateFollowLatest(event.currentTarget)}>
           {messages.map((message, index) => (
             <article className={`chat-row ${message.role}`} key={`${message.role}-${index}`}>
               <div className="message-content">
@@ -947,7 +952,6 @@ export default function Home() {
             </article>
           ))}
           {error && <p className="error" role="alert">{error}</p>}
-          <div ref={endRef} />
         </div>
 
         <form onSubmit={send} className={`composer ${draggingReference ? "dragging-reference" : ""}`}>
