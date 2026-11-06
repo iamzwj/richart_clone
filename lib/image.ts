@@ -144,9 +144,12 @@ function shouldUseFallbackModel(error: unknown): boolean {
   return /模型.*(?:修复|维护|不可用)|model.*(?:repair|maintenance|unavailable)/i.test(message);
 }
 
-function shouldEmbedReference(error: unknown): boolean {
+function shouldEmbedReference(error: unknown, references: string[]): boolean {
   const message = error instanceof Error ? error.message : "";
-  return /image upload failed|图片上传失败/i.test(message);
+  return /image upload failed|图片上传失败/i.test(message) ||
+    (/^generate failed[.!]?$/i.test(message.trim()) && references.some(
+      (source) => !source.startsWith("data:") && new URL(source).pathname === "/api/design/image",
+    ));
 }
 
 async function embedReferenceImage(source: string): Promise<string> {
@@ -212,7 +215,7 @@ async function createOne(brief: DesignBrief, references: string[], constraints: 
     try {
       return await requestImage(model, imageReferences);
     } catch (error) {
-      if (imageReferences.length && !retriedWithEmbeddedReference && shouldEmbedReference(error)) {
+      if (imageReferences.length && !retriedWithEmbeddedReference && shouldEmbedReference(error, imageReferences)) {
         imageReferences = await Promise.all(imageReferences.map(embedReferenceImage));
         retriedWithEmbeddedReference = true;
         continue;
