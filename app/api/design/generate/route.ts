@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { missingFields, normaliseBrief } from "@/lib/design";
 import { generateDesignImages, isAllowedImageUrl, persistReferenceImage } from "@/lib/image";
+import { completeDailyImageReservation, releaseDailyImageReservation, reserveDailyImages } from "@/lib/daily-image-limit";
 import { isRateLimited } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -59,8 +60,19 @@ export async function POST(request: NextRequest) {
     const count = body.count === 1 ? 1 : 2;
     const filenamePrompt = typeof body.filenamePrompt === "string" ? body.filenamePrompt.trim().slice(0, 2_000) : undefined;
     const prompt = typeof body.prompt === "string" ? body.prompt.trim().slice(0, 8_000) : undefined;
-    const images = await generateDesignImages(brief, references, constraints, modification, count, filenamePrompt, prompt);
-    return NextResponse.json({ images });
+    const reservation = await reserveDailyImages(count);
+    if (!reservation) {
+      return NextResponse.json({ error: "今日生成额度已用完（100 张），请明天再来。" }, { status: 429 });
+    }
+
+    try {
+      const images = await generateDesignImages(brief, references, constraints, modification, count, filenamePrompt, prompt);
+      await completeDailyImageReservation(reservation, images.length);
+      return NextResponse.json({ images });
+    } catch (error) {
+      await releaseDailyImageReservation(reservation);
+      throw error;
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "生图失败，请稍后重试。";
     console.error("Design image generation failed:", message);

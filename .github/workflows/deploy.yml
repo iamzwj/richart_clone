@@ -75,6 +75,7 @@ jobs:
           GRSAI_MODEL: ${{ vars.GRSAI_MODEL || 'gemini-3.1-flash-lite' }}
           CONVERSATION_STORE_PATH: /opt/richart-clone/data/conversations.json
           GENERATED_IMAGE_STORE_PATH: /opt/richart-clone/data/generated
+          DAILY_IMAGE_LIMIT_STORE_PATH: /opt/richart-clone/data/daily-image-limit.json
         run: |
           umask 077
           {
@@ -83,6 +84,7 @@ jobs:
             printf 'GRSAI_MODEL=%s\n' "$GRSAI_MODEL"
             printf 'CONVERSATION_STORE_PATH=%s\n' "$CONVERSATION_STORE_PATH"
             printf 'GENERATED_IMAGE_STORE_PATH=%s\n' "$GENERATED_IMAGE_STORE_PATH"
+            printf 'DAILY_IMAGE_LIMIT_STORE_PATH=%s\n' "$DAILY_IMAGE_LIMIT_STORE_PATH"
           } > .richart-clone-runtime.env
 
       - name: Upload runtime configuration
